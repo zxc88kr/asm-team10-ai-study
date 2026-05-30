@@ -26,10 +26,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Pages (자동 활성화)
+      # 레포 소유자가 Settings → Pages → Source 를 "GitHub Actions"로 한 번 설정해두면
+      # 이후 main 푸시마다 자동 배포됩니다. (enablement 자동화는 admin 권한이 필요해 제거)
+      - name: Setup Pages
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
 
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
