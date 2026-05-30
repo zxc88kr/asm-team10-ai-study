@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RoomPilot — AI 주거 코치 (프로토타입)</title>
+  <meta name="description" content="첫 독립 청년의 생활 니즈를 LLM이 집 조건으로 번역·발굴해 근거와 함께 매물을 추천하는 멀티 에이전트 프로토타입" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- ───────── 좌측 사이드바 ───────── -->
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark"></span>
+        <span class="brand-name">RoomPilot</span>
+      </div>
+
+      <nav class="nav">
+        <a class="nav-item active"><span class="nav-ic">💬</span> 대화</a>
+        <a class="nav-item"><span class="nav-ic">🏠</span> 추천 매물</a>
+        <a class="nav-item"><span class="nav-ic">📍</span> 입지 분석</a>
+        <a class="nav-item"><span class="nav-ic">🔖</span> 저장한 매물</a>
+      </nav>
+
+      <div class="steps">
+        <div class="steps-title">진행 단계</div>
+        <ol class="step-list" id="stepList">
+          <li class="step active" data-step="1"><span class="step-dot">1</span><span class="step-label">니즈 파악</span></li>
+          <li class="step" data-step="2"><span class="step-dot">2</span><span class="step-label">매물 추천</span></li>
+          <li class="step" data-step="3"><span class="step-dot">3</span><span class="step-label">입지 분석</span></li>
+        </ol>
+      </div>
+
+      <div class="sidebar-foot">
+        <div class="kpi-card" id="kpiCard">
+          <div class="kpi-title">차별점 지표</div>
+          <div class="kpi-line">내가 말한 조건 <b id="kpiSaid">0</b></div>
+          <div class="kpi-line accent">AI가 발굴한 조건 <b id="kpiInferred">0</b></div>
+          <div class="kpi-hint">태그 검색은 ‘말한 것’만, RoomPilot은 ‘몰랐던 것’까지 찾아줍니다.</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ───────── 중앙 채팅 ───────── -->
+    <main class="chat">
+      <header class="chat-head">
+        <div>
+          <h1>AI 주거 코치</h1>
+          <p>조건·맥락을 이해해 집을 함께 찾아드려요</p>
+        </div>
+        <button class="btn-ghost" id="restartBtn" title="처음부터">↻ 다시 시작</button>
+      </header>
+
+      <div class="chat-scroll" id="chatScroll"></div>
+
+      <div class="composer">
+        <div class="quick" id="quickReplies"></div>
+        <div class="composer-row">
+          <input id="chatInput" type="text" placeholder="메시지를 입력하거나 위 추천 답변을 눌러보세요…" autocomplete="off" />
+          <button id="sendBtn" class="send" aria-label="보내기">↑</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- ───────── 우측 패널 ───────── -->
+    <section class="panels">
+      <!-- 내 조건 요약 -->
+      <div class="card">
+        <div class="card-head">
+          <h2>내 조건 요약</h2>
+          <button class="link" id="editBtn">조건 편집</button>
+        </div>
+        <div id="profileEmpty" class="empty">대화를 시작하면 조건이 여기에 쌓여요.</div>
+        <ul class="cond-list" id="condList"></ul>
+        <div class="priority" id="priorityBox" hidden>
+          <span class="pri-label">우선순위</span>
+          <span class="pri-chips" id="priChips"></span>
+        </div>
+      </div>
+
+      <!-- 추천 매물 TOP 3 -->
+      <div class="card">
+        <div class="card-head">
+          <h2>추천 매물 <span class="muted">TOP 3</span></h2>
+          <span class="badge-soft" id="recMeta" hidden></span>
+        </div>
+        <div id="recEmpty" class="empty">조건이 모이면 매물을 추천해요.</div>
+        <ul class="rec-list" id="recList"></ul>
+      </div>
+
+      <!-- 입지 분석 요약 -->
+      <div class="card">
+        <div class="card-head"><h2>입지 분석 요약</h2></div>
+        <div id="locEmpty" class="empty">추천 매물의 입지를 당신의 생활 기준으로 해석해요.</div>
+        <div id="locBox" hidden>
+          <div class="loc-target" id="locTarget"></div>
+          <ul class="loc-bars" id="locBars"></ul>
+          <p class="loc-comment" id="locComment"></p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 매물 상세 모달 -->
+  <div class="modal-backdrop" id="modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true">
+      <button class="modal-close" id="modalClose">✕</button>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>
