@@ -16,6 +16,8 @@
   --radius: 14px;
 }
 * { box-sizing: border-box; }
+/* hidden 속성은 어떤 display 규칙보다 우선 (모달/패널 토글이 class display에 덮이지 않도록) */
+[hidden] { display: none !important; }
 html, body { height: 100%; margin: 0; }
 body {
   font-family: "Noto Sans KR", "맑은 고딕", system-ui, sans-serif;
