@@ -38,6 +38,7 @@ RoomPilot은 **대화**로 생활을 듣고, 사용자가 말하지 않은 조�
 ## 실행 방법
 
 ```bash
+cd frontend
 npm install
 npm run dev
 # → http://localhost:5173/asm-team10-ai-study/
@@ -46,7 +47,8 @@ npm run dev
 프로덕션 빌드:
 
 ```bash
-npm run build   # dist/ 생성
+cd frontend
+npm run build   # frontend/dist/ 생성
 npm run preview # 빌드 결과 로컬 확인
 ```
 
