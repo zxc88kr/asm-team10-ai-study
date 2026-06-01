@@ -28,14 +28,25 @@ jobs:
 
       # 레포 소유자가 Settings → Pages → Source 를 "GitHub Actions"로 한 번 설정해두면
       # 이후 main 푸시마다 자동 배포됩니다. (enablement 자동화는 admin 권한이 필요해 제거)
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # 빌드 단계 없는 정적 사이트 — 레포 루트를 그대로 업로드
-          path: "."
+          path: "dist"
 
       - name: Deploy to GitHub Pages
         id: deployment

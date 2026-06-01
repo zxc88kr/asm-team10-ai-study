@@ -37,27 +37,29 @@ RoomPilot은 **대화**로 생활을 듣고, 사용자가 말하지 않은 조�
 
 ## 실행 방법
 
-빌드 단계가 없는 **정적 사이트**입니다.
-
 ```bash
-# 로컬 미리보기
-python3 -m http.server 8000
-# → http://localhost:8000
+npm install
+npm run dev
+# → http://localhost:5173/asm-team10-ai-study/
 ```
 
-또는 `index.html`을 브라우저로 직접 열어도 됩니다.
+프로덕션 빌드:
+
+```bash
+npm run build   # dist/ 생성
+npm run preview # 빌드 결과 로컬 확인
+```
 
 ---
 
 ## 기술 구성
 
-- **프로토타입(이 레포):** 순수 HTML/CSS/JavaScript(바닐라). 빌드·의존성 없음 → GitHub Pages에서 바로 구동.
-  - `index.html` — 3-패널 셸
-  - `assets/css/styles.css` — 스타일
-  - `assets/js/data.js` — 시드 매물·시나리오·조건 카드 정의
-  - `assets/js/app.js` — 인터뷰 흐름·의미 매칭·입지·루프백 로직
+- **프론트엔드(이 레포):** React 19 + Vite 6 + Zustand + Tailwind CSS v4. `main` 푸시 시 GitHub Actions가 빌드 후 Pages 배포.
+  - `src/data/` — 시드 매물·시나리오·조건 카드 정의
+  - `src/store/useAppStore.js` — Zustand 스토어 (인터뷰 흐름·의미 매칭·루프백 로직)
+  - `src/components/` — Sidebar, ChatPanel, ConditionSummary, RecommendationList, LocationAnalysis, ListingModal, Toast
 - **전체 구현 목표(기획서):** React + FastAPI + **LangGraph** 오케스트레이션(Agent 1·2·3 + 사용자 승인 + 루프백) + **Claude API** 추론 + 지도·공공데이터. 이 프로토타입은 그 흐름을 시드 데이터·규칙으로 **재현한 프런트엔드 데모**입니다.
 
 ## 배포
 
-`main` 브랜치 푸시 시 GitHub Actions(`.github/workflows/deploy-pages.yml`)가 Pages를 자동 활성화·배포합니다.
+`main` 브랜치 푸시 시 GitHub Actions(`.github/workflows/deploy-pages.yml`)가 `npm run build` 실행 후 `dist/`를 Pages에 자동 배포합니다.
