@@ -77,7 +77,7 @@ export default function ConditionSummary({ showEdit = false }: { showEdit?: bool
           return (
             <div key={row.key} className="cond-row">
               <div className="cond-row-icon" style={{ background: row.iconBg }}>
-                <Icon size={13} />
+                <Icon size={15} />
               </div>
               <span className="cond-row-key">{row.label}</span>
               <span

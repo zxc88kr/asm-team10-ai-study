@@ -52,7 +52,7 @@ export default function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="brand">
-        <div className="brand-mark"><Home size={16} strokeWidth={2.5} /></div>
+        <div className="brand-mark"><Home size={20} strokeWidth={2.5} /></div>
         <span className="brand-name">RoomPilot</span>
       </div>
 
@@ -66,7 +66,7 @@ export default function Sidebar() {
               onClick={() => handleNavClick(item.id)}
               type="button"
             >
-              <span className="nav-ic"><Icon size={16} /></span>
+              <span className="nav-ic"><Icon size={18} /></span>
               <span>{item.label}</span>
             </button>
           )
@@ -81,7 +81,7 @@ export default function Sidebar() {
             return (
               <li key={step.label} className={`step ${state === 'done' ? 'done' : state === 'active' ? 'active' : ''}`}>
                 <div className="step-dot">
-                  {state === 'done' ? <Check size={12} strokeWidth={3} /> : i + 1}
+                  {state === 'done' ? <Check size={14} strokeWidth={3} /> : i + 1}
                 </div>
                 <div className="step-text">
                   <span className="step-label">{step.label}</span>
@@ -95,7 +95,7 @@ export default function Sidebar() {
 
       <div className="sidebar-foot">
         <div className="help-card">
-          <div className="help-icon"><Home size={24} /></div>
+          <div className="help-icon"><Home size={28} /></div>
           <div className="help-title">{helpTitle}</div>
           <div className="help-desc">{helpDesc}</div>
           <button className="help-btn" onClick={reset} type="button">
