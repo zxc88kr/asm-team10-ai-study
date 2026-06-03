@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { SCENARIO, GREETING } from '../data/scenario'
 import { CONDITION_CARDS } from '../data/conditions'
 import { LISTINGS } from '../data/listings'
-import type { Listing, HardConstraints, Message, ScoredListing, Status, BreakdownItem } from '../types'
+import type { Listing, HardConstraints, Message, ScoredListing, Status, BreakdownItem, ActiveView } from '../types'
 
 const RENT_ALLOWANCE = 5
 const STATUS_VAL: Record<Status, number> = { full: 1, partial: 0.5, none: 0 }
@@ -20,8 +20,9 @@ type ScoreResult =
   | { excluded: false; score: number; breakdown: BreakdownItem[]; penalty: number }
 
 function scoreListing(L: Listing, hard: HardConstraints, cards: string[]): ScoreResult {
-  if (L.deposit > (hard.deposit ?? Infinity)) return { excluded: true, reason: '보증금 초과' }
-  if (L.rent > (hard.rent ?? Infinity) + RENT_ALLOWANCE) return { excluded: true, reason: '월세 초과' }
+  if (hard.noBasement && L.floor < 1) return { excluded: true, reason: '반지하 제외' }
+  if (hard.deposit && L.deposit > hard.deposit) return { excluded: true, reason: '보증금 초과' }
+  if (hard.rent && L.rent > hard.rent + RENT_ALLOWANCE) return { excluded: true, reason: '월세 초과' }
 
   let sum = 0, wsum = 0
   const breakdown: BreakdownItem[] = cards.map(cid => {
@@ -39,7 +40,7 @@ function scoreListing(L: Listing, hard: HardConstraints, cards: string[]): Score
   return { excluded: false, score, breakdown, penalty }
 }
 
-const END_MSG = "이 프로토타입의 시나리오는 여기까지예요. 오른쪽 추천과 '조건 편집'으로 루프백을 체험해 보세요 🙂"
+const END_MSG = '이 프로토타입의 시나리오는 여기까지예요. 오른쪽에서 추천 매물을 확인하거나 조건을 수정해 보세요 🙂'
 
 interface AppState {
   turn: number
@@ -51,14 +52,15 @@ interface AppState {
   messages: Message[]
   currentStep: number
   isTyping: boolean
-  modalListing: ScoredListing | null
+  activeView: ActiveView
+  selectedListingId: string | null
   toastMessage: string | null
   advance: (displayText?: string) => void
   runRecommendation: (advanceSteps: boolean) => void
   updateRent: (value: number) => void
   reset: () => void
-  openModal: (scoredListing: ScoredListing) => void
-  closeModal: () => void
+  openAnalysis: (listingId: string) => void
+  closeAnalysis: () => void
   showToast: (msg: string) => void
 }
 
@@ -72,7 +74,8 @@ const useAppStore = create<AppState>((set, get) => ({
   messages: [{ role: 'ai', text: GREETING }],
   currentStep: 1,
   isTyping: false,
-  modalListing: null,
+  activeView: 'chat',
+  selectedListingId: null,
   toastMessage: null,
 
   advance(displayText?: string) {
@@ -105,15 +108,23 @@ const useAppStore = create<AppState>((set, get) => ({
     set(s => ({ turn: s.turn + 1 }))
 
     setTimeout(() => {
-      set(s => ({ isTyping: false, messages: [...s.messages, { role: 'ai', text: step.aiText }] }))
-      if (step.recommend) get().runRecommendation(true)
+      if (step.recommend) {
+        set(s => ({
+          isTyping: false,
+          messages: [...s.messages, { role: 'ai', text: step.aiText, searching: true }],
+        }))
+        setTimeout(() => get().runRecommendation(true), 1200)
+      } else {
+        set(s => ({ isTyping: false, messages: [...s.messages, { role: 'ai', text: step.aiText }] }))
+      }
     }, 650)
   },
 
   runRecommendation(advanceSteps: boolean) {
     const { hard, cards } = get()
     const scored = LISTINGS.map(L => ({ L, ...scoreListing(L, hard, cards) }))
-    const ok = scored.filter((s): s is { L: Listing } & Extract<ScoreResult, { excluded: false }> => !s.excluded)
+    const ok = scored
+      .filter((s): s is { L: Listing } & Extract<ScoreResult, { excluded: false }> => !s.excluded)
       .sort((a, b) => b.score - a.score)
     const top = ok.slice(0, 3)
     const excluded = scored.length - ok.length
@@ -142,13 +153,19 @@ const useAppStore = create<AppState>((set, get) => ({
       messages: [{ role: 'ai', text: GREETING }],
       currentStep: 1,
       isTyping: false,
-      modalListing: null,
+      activeView: 'chat',
+      selectedListingId: null,
       toastMessage: null,
     })
   },
 
-  openModal(scoredListing: ScoredListing) { set({ modalListing: scoredListing }) },
-  closeModal() { set({ modalListing: null }) },
+  openAnalysis(listingId: string) {
+    set({ activeView: 'analysis', selectedListingId: listingId })
+  },
+
+  closeAnalysis() {
+    set({ activeView: 'chat', selectedListingId: null })
+  },
 
   showToast(msg: string) {
     set({ toastMessage: msg })

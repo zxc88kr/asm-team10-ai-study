@@ -1,117 +1,95 @@
-import { useState, useEffect } from 'react'
+import { Building2, Wallet, Clock, Ban, Star, Pencil } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
-import { CONDITION_CARDS, CATEGORY_CLASS } from '../data/conditions'
 import { PRIORITY } from '../data/scenario'
-import type { CardSource } from '../types'
 
-export default function ConditionSummary() {
-  const hard = useAppStore(s => s.hard)
-  const cards = useAppStore(s => s.cards)
-  const recommended = useAppStore(s => s.recommended)
-  const lastTop = useAppStore(s => s.lastTop)
-  const updateRent = useAppStore(s => s.updateRent)
-  const showToast = useAppStore(s => s.showToast)
+interface ConditionConfig {
+  key: string
+  icon: LucideIcon
+  iconBg: string
+  label: string
+  valBg: string
+  valColor: string
+}
 
-  const [showEditor, setShowEditor] = useState(false)
-  const [tempRent, setTempRent] = useState(50)
+const CONDITION_DISPLAY: ConditionConfig[] = [
+  { key: 'company',  icon: Building2, iconBg: '#EEF3FF', label: '회사/학교',  valBg: '#EEF3FF', valColor: '#4B7BF5' },
+  { key: 'rent',     icon: Wallet,    iconBg: '#DCFCE7', label: '월 고정비',  valBg: '#DCFCE7', valColor: '#16A34A' },
+  { key: 'commute',  icon: Clock,     iconBg: '#DCFCE7', label: '출퇴근',     valBg: '#DCFCE7', valColor: '#16A34A' },
+  { key: 'exclude',  icon: Ban,       iconBg: '#FEE2E2', label: '제외 조건',  valBg: '#FEE2E2', valColor: '#DC2626' },
+  { key: 'priority', icon: Star,      iconBg: '#FEF3C7', label: '우선순위',   valBg: '#FEF3C7', valColor: '#D97706' },
+]
 
-  useEffect(() => {
-    if (hard.rent) {
-      setTempRent(hard.rent)
-    } else {
-      setShowEditor(false)
-    }
-  }, [hard.rent])
+export default function ConditionSummary({ showEdit = false }: { showEdit?: boolean }) {
+  const { hard, cards } = useAppStore()
 
-  const hasConditions = cards.length > 0 || Object.keys(hard).length > 0
+  const companyVal = cards.includes('gangnam_commute') ? '강남역' : null
+  const rentVal = hard.rent ? `${hard.rent}만 원 이하` : null
+  const commuteVal = hard.commuteMax ? `${hard.commuteMax}분 이내` : null
+  const excludeVal = hard.noBasement ? '반지하' : null
+  const priorityVal = PRIORITY.join(' / ')
 
-  function handleEditClick() {
-    if (!hard.rent) {
-      showToast('아직 예산 조건이 없어요. 대화를 먼저 진행해 주세요.')
-      return
-    }
-    setShowEditor(v => !v)
+  const displayValues: Record<string, string | null> = {
+    company: companyVal,
+    rent: rentVal,
+    commute: commuteVal,
+    exclude: excludeVal,
+    priority: cards.length > 0 ? priorityVal : null,
   }
 
-  function handleApply() {
-    updateRent(tempRent)
-    setShowEditor(false)
-    if (recommended || lastTop) {
-      showToast(`월세 상한을 ${tempRent}만원으로 반영해 추천을 갱신했어요.`)
-    }
+  const activeRows = CONDITION_DISPLAY.filter(c => displayValues[c.key] !== null)
+
+  if (activeRows.length === 0) {
+    return (
+      <div className="card cond-summary">
+        <div className="card-head">
+          <h2>내 조건 요약</h2>
+          {showEdit && (
+            <button className="card-link" type="button">
+              <Pencil size={12} style={{ marginRight: 3 }} /> 편집
+            </button>
+          )}
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--muted)', padding: '4px 0' }}>
+          대화를 통해 조건을 설정해주세요.
+        </p>
+      </div>
+    )
   }
 
   return (
-    <div className="card">
+    <div className="card cond-summary">
       <div className="card-head">
         <h2>내 조건 요약</h2>
-        <button className="link" onClick={handleEditClick}>조건 편집</button>
+        {showEdit ? (
+          <button className="card-link" type="button">
+            <Pencil size={12} style={{ marginRight: 3 }} /> 수정
+          </button>
+        ) : (
+          <span style={{ fontSize: 11, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 3 }}>
+            <Pencil size={11} /> 편집
+          </span>
+        )}
       </div>
-
-      {!hasConditions && (
-        <div className="empty">대화를 시작하면 조건이 여기에 쌓여요.</div>
-      )}
-
-      <ul className="cond-list">
-        {hard.deposit && (
-          <CondItem category="비용" label="보증금" value={`${hard.deposit.toLocaleString()}만원 이하`} source="said" reason="직접 입력" />
-        )}
-        {hard.rent && (
-          <CondItem category="비용" label="월세" value={`${hard.rent}만원 이하`} source="said" reason="직접 입력" />
-        )}
-        {cards.map(cid => {
-          const c = CONDITION_CARDS[cid]
+      <div className="cond-rows">
+        {activeRows.map(row => {
+          const Icon = row.icon
           return (
-            <CondItem key={cid} category={c.category} label={c.label} value="" source={c.source} reason={c.reason} />
+            <div key={row.key} className="cond-row">
+              <div className="cond-row-icon" style={{ background: row.iconBg }}>
+                <Icon size={15} />
+              </div>
+              <span className="cond-row-key">{row.label}</span>
+              <span
+                className="cond-row-val"
+                style={{ background: row.valBg, color: row.valColor }}
+              >
+                {displayValues[row.key]}
+              </span>
+            </div>
           )
         })}
-      </ul>
-
-      {hasConditions && (
-        <div className="priority">
-          <span className="pri-label">우선순위</span>
-          <span className="pri-chips">
-            {PRIORITY.map((p, i) => (
-              <span key={p} className="pri-chip">{i + 1}. {p}</span>
-            ))}
-          </span>
-        </div>
-      )}
-
-      {showEditor && (
-        <div className="editor">
-          <div className="ed-title">월세 상한 조정 (루프백 데모)</div>
-          <div className="ed-row">
-            <button className="ed-btn" onClick={() => setTempRent(t => Math.max(20, t - 5))}>−5</button>
-            <span className="ed-val"><b>{tempRent}</b> 만원</span>
-            <button className="ed-btn" onClick={() => setTempRent(t => Math.min(120, t + 5))}>＋5</button>
-          </div>
-          <button className="ed-apply" onClick={handleApply}>이 조건으로 다시 추천</button>
-          <div className="ed-hint">조건을 바꾸면 Agent 2·3가 다시 돌아 추천이 갱신돼요.</div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-interface CondItemProps {
-  category: string
-  label: string
-  value: string
-  source: CardSource
-  reason: string
-}
-
-function CondItem({ category, label, value, source, reason }: CondItemProps) {
-  return (
-    <li className="cond-item">
-      <div className="cond-top">
-        <span className={`cat-dot ${CATEGORY_CLASS[category] || ''}`} />
-        <span className="cond-label">{label}</span>
-        <span className={`src ${source}`}>{source === 'said' ? '말함' : 'AI 발굴'}</span>
       </div>
-      {value && <div className="cond-val">{value}</div>}
-      {reason && <div className="cond-reason">↳ {reason}</div>}
-    </li>
+    </div>
   )
 }

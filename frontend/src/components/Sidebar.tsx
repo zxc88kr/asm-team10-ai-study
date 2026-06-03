@@ -1,55 +1,106 @@
+import { Home, MessageCircle, Building2, MapPin, Bookmark, Check } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
-import { CONDITION_CARDS } from '../data/conditions'
 
-const STEPS = [
-  { n: 1, label: '니즈 파악' },
-  { n: 2, label: '매물 추천' },
-  { n: 3, label: '입지 분석' },
+interface NavItem {
+  icon: LucideIcon
+  label: string
+  id: string
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { icon: Home, label: '홈', id: 'home' },
+  { icon: MessageCircle, label: '대화', id: 'chat' },
+  { icon: Building2, label: '추천 매물', id: 'listings' },
+  { icon: MapPin, label: '입지 분석', id: 'analysis' },
+  { icon: Bookmark, label: '저장한 매물', id: 'saved' },
 ]
 
-export default function Sidebar() {
-  const currentStep = useAppStore(s => s.currentStep)
-  const cards = useAppStore(s => s.cards)
-  const hard = useAppStore(s => s.hard)
+interface StepConfig {
+  label: string
+  statusMap: Record<number, string>
+}
 
-  const said = Object.keys(hard).length + cards.filter(c => CONDITION_CARDS[c].source === 'said').length
-  const inferred = cards.filter(c => CONDITION_CARDS[c].source === 'inferred').length
+const STEPS: StepConfig[] = [
+  { label: '니즈 파악', statusMap: { 1: '진행 중', 2: '완료', 3: '완료' } },
+  { label: '매물 추천', statusMap: { 1: '대기 중', 2: '진행 중', 3: '완료' } },
+  { label: '입지 분석', statusMap: { 1: '대기 중', 2: '대기 중', 3: '진행 중' } },
+]
+
+function getStepState(stepIdx: number, currentStep: number): 'done' | 'active' | 'waiting' {
+  if (currentStep > stepIdx + 1) return 'done'
+  if (currentStep === stepIdx + 1) return 'active'
+  return 'waiting'
+}
+
+export default function Sidebar() {
+  const { currentStep, activeView, openAnalysis, closeAnalysis, lastTop, reset } = useAppStore()
+
+  const handleNavClick = (id: string) => {
+    if (id === 'chat') closeAnalysis()
+    if (id === 'analysis' && lastTop && lastTop.length > 0) {
+      openAnalysis(lastTop[0].L.id)
+    }
+  }
+
+  const activeNavId = activeView === 'analysis' ? 'analysis' : 'chat'
+  const helpTitle = currentStep < 3 ? '첫 자취, 막막하신가요?' : '다음 단계는 무엇인가요?'
+  const helpDesc = currentStep < 3
+    ? 'AI 주거 코치가 끝까지 도와드릴게요.'
+    : '분석 결과를 바탕으로 최적의 선택을 도와드릴게요.'
 
   return (
     <aside className="sidebar">
       <div className="brand">
-        <span className="brand-mark" />
+        <div className="brand-mark"><Home size={20} strokeWidth={2.5} /></div>
         <span className="brand-name">RoomPilot</span>
       </div>
 
       <nav className="nav">
-        <a className="nav-item active"><span className="nav-ic">💬</span> 대화</a>
-        <a className="nav-item"><span className="nav-ic">🏠</span> 추천 매물</a>
-        <a className="nav-item"><span className="nav-ic">📍</span> 입지 분석</a>
-        <a className="nav-item"><span className="nav-ic">🔖</span> 저장한 매물</a>
+        {NAV_ITEMS.map(item => {
+          const Icon = item.icon
+          return (
+            <button
+              key={item.id}
+              className={`nav-item${activeNavId === item.id ? ' active' : ''}`}
+              onClick={() => handleNavClick(item.id)}
+              type="button"
+            >
+              <span className="nav-ic"><Icon size={18} /></span>
+              <span>{item.label}</span>
+            </button>
+          )
+        })}
       </nav>
 
-      <div className="steps">
-        <div className="steps-title">진행 단계</div>
-        <ol className="step-list">
-          {STEPS.map(({ n, label }) => (
-            <li
-              key={n}
-              className={`step${currentStep === n ? ' active' : ''}${currentStep > n ? ' done' : ''}`}
-            >
-              <span className="step-dot">{n}</span>
-              <span className="step-label">{label}</span>
-            </li>
-          ))}
-        </ol>
+      <div className="steps-section">
+        <div className="steps-title">에이전트 진행</div>
+        <ul className="step-list">
+          {STEPS.map((step, i) => {
+            const state = getStepState(i, currentStep)
+            return (
+              <li key={step.label} className={`step ${state === 'done' ? 'done' : state === 'active' ? 'active' : ''}`}>
+                <div className="step-dot">
+                  {state === 'done' ? <Check size={14} strokeWidth={3} /> : i + 1}
+                </div>
+                <div className="step-text">
+                  <span className="step-label">{step.label}</span>
+                  <span className="step-status">{step.statusMap[currentStep]}</span>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
       </div>
 
       <div className="sidebar-foot">
-        <div className="kpi-card">
-          <div className="kpi-title">차별점 지표</div>
-          <div className="kpi-line">내가 말한 조건 <b>{said}</b></div>
-          <div className="kpi-line accent">AI가 발굴한 조건 <b>{inferred}</b></div>
-          <div className="kpi-hint">태그 검색은 '말한 것'만, RoomPilot은 '몰랐던 것'까지 찾아줍니다.</div>
+        <div className="help-card">
+          <div className="help-icon"><Home size={28} /></div>
+          <div className="help-title">{helpTitle}</div>
+          <div className="help-desc">{helpDesc}</div>
+          <button className="help-btn" onClick={reset} type="button">
+            사용 가이드 보기 <span>›</span>
+          </button>
         </div>
       </div>
     </aside>

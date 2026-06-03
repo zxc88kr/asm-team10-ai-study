@@ -1,11 +1,56 @@
 export type Status = 'full' | 'partial' | 'none'
 export type NightTransit = 'good' | 'ok' | 'poor'
 export type CardSource = 'said' | 'inferred'
+export type ActiveView = 'chat' | 'analysis'
 
 export interface NightInfo {
   lit: boolean
   mainRoad: boolean
   alleyM: number
+}
+
+export interface CommuteLeg {
+  label: string
+  minutes: number
+  type: 'walk' | 'subway' | 'bus'
+}
+
+export interface CommuteAnalysis {
+  legs: CommuteLeg[]
+  totalMinutes: number
+  transfers: number
+  mainNote: string
+}
+
+export interface NightSafetyItem {
+  icon: string
+  label: string
+  detail: string
+  pass: boolean
+}
+
+export interface ConvenienceFacility {
+  name: string
+  walkMin: number
+  icon: string
+}
+
+export interface RecommendationBasis {
+  category: string
+  color: string
+  icon: string
+  detail: string
+}
+
+export interface LocationAnalysis {
+  commute: CommuteAnalysis
+  nightSafety: NightSafetyItem[]
+  convenience: ConvenienceFacility[]
+  basis: RecommendationBasis[]
+  pros: string[]
+  cons: string[]
+  aiComment: string
+  scoreBreakdown: { label: string; score: number }[]
 }
 
 export interface Listing {
@@ -18,11 +63,12 @@ export interface Listing {
   pyeong: number
   floor: number
   options: string[]
-  walkMin: number
+  commuteMin: number
   night: NightInfo
   nightTransit: NightTransit
   thumb: string
   desc: string
+  locationAnalysis: LocationAnalysis
 }
 
 export interface MatchResult {
@@ -58,11 +104,14 @@ export interface ScoredListing {
 export interface HardConstraints {
   deposit?: number
   rent?: number
+  commuteMax?: number
+  noBasement?: boolean
 }
 
 export interface Message {
   role: 'ai' | 'user'
   text: string
+  searching?: boolean
 }
 
 export interface ScenarioStep {

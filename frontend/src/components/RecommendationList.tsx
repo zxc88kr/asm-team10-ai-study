@@ -1,59 +1,66 @@
-import useAppStore, { STATUS_KO, scoreClass } from '../store/useAppStore'
-import { LISTINGS } from '../data/listings'
+import useAppStore, { scoreClass } from '../store/useAppStore'
 import type { ScoredListing } from '../types'
 
-export default function RecommendationList() {
-  const lastTop = useAppStore(s => s.lastTop)
-  const excludedCount = useAppStore(s => s.excludedCount)
-  const openModal = useAppStore(s => s.openModal)
+interface Props {
+  onSelectListing?: (id: string) => void
+  selectedId?: string | null
+}
+
+export default function RecommendationList({ onSelectListing, selectedId }: Props) {
+  const { lastTop, recommended, openAnalysis } = useAppStore()
+
+  const handleClick = (sl: ScoredListing) => {
+    if (onSelectListing) {
+      onSelectListing(sl.L.id)
+    } else {
+      openAnalysis(sl.L.id)
+    }
+  }
+
+  if (!recommended || !lastTop || lastTop.length === 0) {
+    return (
+      <div className="card">
+        <div className="card-head">
+          <h2>추천 매물 TOP 3</h2>
+          <span style={{ fontSize: 11, color: 'var(--muted)' }}>전체 보기</span>
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--muted)', padding: '4px 0', lineHeight: 1.6 }}>
+          대화가 완료되면 맞춤 매물을 추천해드려요.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="card">
       <div className="card-head">
-        <h2>추천 매물 <span className="muted">TOP 3</span></h2>
-        {lastTop && (
-          <span className="badge-soft">
-            {LISTINGS.length}개 중 {excludedCount}개 제외 · 의미 매칭 랭킹
-          </span>
-        )}
+        <h2>추천 매물 TOP 3</h2>
+        <button className="card-link" type="button">전체 보기</button>
       </div>
-
-      {!lastTop && <div className="empty">조건이 모이면 매물을 추천해요.</div>}
-
       <ul className="rec-list">
-        {lastTop?.map((s, idx) => (
-          <RecItem key={s.L.id} s={s} idx={idx} onClick={() => openModal(s)} />
+        {lastTop.map((sl, idx) => (
+          <li
+            key={sl.L.id}
+            className={`rec-item${idx === 0 ? ' top1' : ''}${selectedId === sl.L.id ? ' selected' : ''}`}
+            onClick={() => handleClick(sl)}
+          >
+            <div className={`rank-badge${idx === 0 ? ' gold' : ''}`}>{idx + 1}</div>
+            <div className="thumb">{sl.L.thumb}</div>
+            <div className="rec-body">
+              <div className="rec-name">{sl.L.name}</div>
+              <div className="rec-meta">출퇴근 {sl.L.commuteMin}분 · 월 {sl.L.rent}만 원</div>
+              <div className="rec-tags">
+                <span className="rec-tag">출퇴근 {sl.L.commuteMin}분</span>
+                <span className="rec-tag">월 {sl.L.rent}만</span>
+              </div>
+            </div>
+            <div className={`score-badge ${scoreClass(sl.score)}`}>
+              {sl.score}
+              <span>최종 점수</span>
+            </div>
+          </li>
         ))}
       </ul>
     </div>
-  )
-}
-
-interface RecItemProps {
-  s: ScoredListing
-  idx: number
-  onClick: () => void
-}
-
-function RecItem({ s, idx, onClick }: RecItemProps) {
-  const chips = s.breakdown.map(b => (
-    <span key={b.cid} className={`mini ${b.status}`}>
-      {b.label.split(/[ ·(]/)[0]} {STATUS_KO[b.status]}
-    </span>
-  ))
-
-  return (
-    <li className="rec-item" onClick={onClick}>
-      <div className="rank">{idx + 1}</div>
-      <div className="thumb">{s.L.thumb}</div>
-      <div className="rec-body">
-        <div className="rec-name">{s.L.name}</div>
-        <div className="rec-sub">
-          {s.L.area} · {s.L.type} · 보증금 {s.L.deposit.toLocaleString()} / 월세 {s.L.rent}
-        </div>
-        <div className="rec-chips">{chips}</div>
-      </div>
-      <div className={`score ${scoreClass(s.score)}`}>{s.score}<span>점</span></div>
-    </li>
   )
 }
