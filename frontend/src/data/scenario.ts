@@ -1,11 +1,13 @@
+import type { ScenarioStep, HardConstraints } from '../types'
+
 const SCHOOL = '○○대'
 
 export const GREETING = '안녕하세요, 첫 자취 준비를 도와드릴 RoomPilot이에요 🙂 어떤 집을 찾고 계세요? 편하게 말씀해 주세요.'
 
-export const SCENARIO = [
+export const SCENARIO: ScenarioStep[] = [
   {
     userText: `${SCHOOL} 신입인데 자취가 처음이에요. 보증금 1000에 월세 50 정도 생각해요.`,
-    hard: { deposit: 1000, rent: 50 },
+    hard: { deposit: 1000, rent: 50 } satisfies HardConstraints,
     cards: ['school_near'],
     aiText: '좋아요. 보증금 1,000·월세 50으로 잡고 학교 근처부터 볼게요. 본가가 멀어 자주 오가긴 어려우세요?',
   },
@@ -27,4 +29,4 @@ export const SCENARIO = [
   },
 ]
 
-export const PRIORITY = ['안전', '비용', '통학']
+export const PRIORITY: string[] = ['안전', '비용', '통학']

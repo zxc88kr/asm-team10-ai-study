@@ -10,7 +10,7 @@ export default function ChatPanel() {
   const reset = useAppStore(s => s.reset)
 
   const [inputValue, setInputValue] = useState('')
-  const scrollRef = useRef(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (scrollRef.current) {

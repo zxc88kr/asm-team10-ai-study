@@ -1,4 +1,6 @@
-export const LISTINGS = [
+import type { Listing } from '../types'
+
+export const LISTINGS: Listing[] = [
   {
     id: 'A', name: '햇살빌라 301호', type: '빌라', area: '신촌', deposit: 1000, rent: 48, pyeong: 7, floor: 3,
     options: ['풀옵션', '에어컨', '세탁기', '냉장고', '인덕션'], walkMin: 12,

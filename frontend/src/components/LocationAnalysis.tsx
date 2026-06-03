@@ -19,7 +19,7 @@ export default function LocationAnalysis() {
   const commute = Math.max(0.2, 1 - (L.walkMin - 8) / 30)
   const conv = Math.min(1, L.options.length / 6)
 
-  const bars = [
+  const bars: [string, number][] = [
     ['귀가 안전동선', safe],
     ['통학 시간', commute],
     ['편의시설', conv],

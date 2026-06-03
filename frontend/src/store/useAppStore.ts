@@ -2,24 +2,29 @@ import { create } from 'zustand'
 import { SCENARIO, GREETING } from '../data/scenario'
 import { CONDITION_CARDS } from '../data/conditions'
 import { LISTINGS } from '../data/listings'
+import type { Listing, HardConstraints, Message, ScoredListing, Status, BreakdownItem } from '../types'
 
 const RENT_ALLOWANCE = 5
-const STATUS_VAL = { full: 1, partial: 0.5, none: 0 }
+const STATUS_VAL: Record<Status, number> = { full: 1, partial: 0.5, none: 0 }
 
-export const STATUS_KO = { full: '충족', partial: '부분', none: '미흡' }
+export const STATUS_KO: Record<Status, string> = { full: '충족', partial: '부분', none: '미흡' }
 
-export function scoreClass(score) {
+export function scoreClass(score: number): string {
   if (score >= 85) return 'sc-high'
   if (score >= 75) return 'sc-mid'
   return 'sc-low'
 }
 
-function scoreListing(L, hard, cards) {
+type ScoreResult =
+  | { excluded: true; reason: string }
+  | { excluded: false; score: number; breakdown: BreakdownItem[]; penalty: number }
+
+function scoreListing(L: Listing, hard: HardConstraints, cards: string[]): ScoreResult {
   if (L.deposit > (hard.deposit ?? Infinity)) return { excluded: true, reason: '보증금 초과' }
   if (L.rent > (hard.rent ?? Infinity) + RENT_ALLOWANCE) return { excluded: true, reason: '월세 초과' }
 
   let sum = 0, wsum = 0
-  const breakdown = cards.map(cid => {
+  const breakdown: BreakdownItem[] = cards.map(cid => {
     const c = CONDITION_CARDS[cid]
     const r = c.match(L)
     sum += c.weight * STATUS_VAL[r.status]
@@ -36,7 +41,28 @@ function scoreListing(L, hard, cards) {
 
 const END_MSG = "이 프로토타입의 시나리오는 여기까지예요. 오른쪽 추천과 '조건 편집'으로 루프백을 체험해 보세요 🙂"
 
-const useAppStore = create((set, get) => ({
+interface AppState {
+  turn: number
+  hard: HardConstraints
+  cards: string[]
+  recommended: boolean
+  lastTop: ScoredListing[] | null
+  excludedCount: number
+  messages: Message[]
+  currentStep: number
+  isTyping: boolean
+  modalListing: ScoredListing | null
+  toastMessage: string | null
+  advance: (displayText?: string) => void
+  runRecommendation: (advanceSteps: boolean) => void
+  updateRent: (value: number) => void
+  reset: () => void
+  openModal: (scoredListing: ScoredListing) => void
+  closeModal: () => void
+  showToast: (msg: string) => void
+}
+
+const useAppStore = create<AppState>((set, get) => ({
   turn: 0,
   hard: {},
   cards: [],
@@ -49,7 +75,7 @@ const useAppStore = create((set, get) => ({
   modalListing: null,
   toastMessage: null,
 
-  advance(displayText) {
+  advance(displayText?: string) {
     const { turn } = get()
 
     if (turn >= SCENARIO.length) {
@@ -84,10 +110,11 @@ const useAppStore = create((set, get) => ({
     }, 650)
   },
 
-  runRecommendation(advanceSteps) {
+  runRecommendation(advanceSteps: boolean) {
     const { hard, cards } = get()
     const scored = LISTINGS.map(L => ({ L, ...scoreListing(L, hard, cards) }))
-    const ok = scored.filter(s => !s.excluded).sort((a, b) => b.score - a.score)
+    const ok = scored.filter((s): s is { L: Listing } & Extract<ScoreResult, { excluded: false }> => !s.excluded)
+      .sort((a, b) => b.score - a.score)
     const top = ok.slice(0, 3)
     const excluded = scored.length - ok.length
 
@@ -99,7 +126,7 @@ const useAppStore = create((set, get) => ({
     }
   },
 
-  updateRent(value) {
+  updateRent(value: number) {
     set(s => ({ hard: { ...s.hard, rent: value } }))
     get().runRecommendation(false)
   },
@@ -120,10 +147,10 @@ const useAppStore = create((set, get) => ({
     })
   },
 
-  openModal(scoredListing) { set({ modalListing: scoredListing }) },
+  openModal(scoredListing: ScoredListing) { set({ modalListing: scoredListing }) },
   closeModal() { set({ modalListing: null }) },
 
-  showToast(msg) {
+  showToast(msg: string) {
     set({ toastMessage: msg })
     setTimeout(() => set({ toastMessage: null }), 2600)
   },
