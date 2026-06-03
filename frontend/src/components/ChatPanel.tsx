@@ -1,53 +1,85 @@
+import type { KeyboardEvent } from 'react'
 import { useRef, useEffect, useState } from 'react'
 import useAppStore from '../store/useAppStore'
 import { SCENARIO } from '../data/scenario'
 
-export default function ChatPanel() {
-  const messages = useAppStore(s => s.messages)
-  const isTyping = useAppStore(s => s.isTyping)
-  const turn = useAppStore(s => s.turn)
-  const advance = useAppStore(s => s.advance)
-  const reset = useAppStore(s => s.reset)
+function formatTime() {
+  const now = new Date()
+  const h = now.getHours()
+  const m = now.getMinutes().toString().padStart(2, '0')
+  const ampm = h >= 12 ? '오후' : '오전'
+  return `${ampm} ${h > 12 ? h - 12 : h}:${m}`
+}
 
-  const [inputValue, setInputValue] = useState('')
+export default function ChatPanel() {
+  const { messages, isTyping, advance, reset, turn } = useAppStore()
+  const [inputVal, setInputVal] = useState('')
+  const [currentTime] = useState(formatTime)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, isTyping])
 
-  function handleSend() {
-    const text = inputValue.trim()
-    if (turn >= SCENARIO.length) {
-      if (text) advance(text)
-      setInputValue('')
-      return
-    }
-    advance(text || undefined)
-    setInputValue('')
+  const nextStep = SCENARIO[turn]
+
+  const handleSend = (text?: string) => {
+    const msg = text ?? inputVal.trim()
+    if (!msg) return
+    setInputVal('')
+    advance(msg)
+    inputRef.current?.focus()
   }
 
-  const nextQuick = !isTyping && turn < SCENARIO.length ? SCENARIO[turn].userText : null
+  const handleKey = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
+  }
 
   return (
-    <main className="chat">
-      <header className="chat-head">
-        <div>
-          <h1>AI 주거 코치</h1>
-          <p>조건·맥락을 이해해 집을 함께 찾아드려요</p>
+    <div className="chat">
+      <div className="chat-head">
+        <div className="chat-head-left">
+          <div className="chat-head-avatar">🤖</div>
+          <div>
+            <h1>AI 주거 코치</h1>
+            <p>대화로 조건을 파악하고 맞춤 매물을 추천합니다</p>
+          </div>
         </div>
-        <button className="btn-ghost" onClick={reset}>↻ 다시 시작</button>
-      </header>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button className="btn-icon" type="button">❓</button>
+          <button className="btn-icon" type="button">🔔</button>
+          <button className="btn-icon" onClick={reset} type="button">↺ 초기화</button>
+        </div>
+      </div>
 
       <div className="chat-scroll" ref={scrollRef}>
         {messages.map((msg, i) => (
           <div key={i} className={`msg ${msg.role}`}>
             {msg.role === 'ai' && <div className="avatar">🤖</div>}
-            <div className="bubble">{msg.text}</div>
+            {msg.role === 'user' && <div className="avatar user-av">👤</div>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: '100%' }}>
+              {msg.searching ? (
+                <div className="searching-bubble">
+                  <div className="search-spinner" />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ marginBottom: 6 }}>{msg.text}</div>
+                    <div className="search-bar-wrap">
+                      <div className="search-bar-fill" />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bubble">{msg.text}</div>
+              )}
+              <span className="msg-time">{currentTime}</span>
+            </div>
           </div>
         ))}
+
         {isTyping && (
           <div className="msg ai typing">
             <div className="avatar">🤖</div>
@@ -61,26 +93,38 @@ export default function ChatPanel() {
       </div>
 
       <div className="composer">
-        <div className="quick">
-          {nextQuick && (
-            <button className="chip" onClick={() => advance(nextQuick)}>
-              {nextQuick}
+        {nextStep && !isTyping && (
+          <div className="quick">
+            <button
+              className="chip"
+              onClick={() => handleSend(nextStep.userText)}
+              type="button"
+            >
+              {nextStep.userText}
             </button>
-          )}
-        </div>
+          </div>
+        )}
         <div className="composer-row">
+          <button className="btn-icon" style={{ borderRadius: 20, padding: '8px 10px' }} type="button">📎</button>
+          <button className="btn-icon" style={{ borderRadius: 20, padding: '8px 10px' }} type="button">⌨️</button>
           <input
+            ref={inputRef}
             className="chat-input"
-            type="text"
-            placeholder="메시지를 입력하거나 위 추천 답변을 눌러보세요…"
-            autoComplete="off"
-            value={inputValue}
-            onChange={e => setInputValue(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSend()}
+            placeholder="예: 강남역 35분 이내, 월 75만원 이하"
+            value={inputVal}
+            onChange={e => setInputVal(e.target.value)}
+            onKeyDown={handleKey}
           />
-          <button className="send" onClick={handleSend} aria-label="보내기">↑</button>
+          <button
+            className="send"
+            onClick={() => handleSend()}
+            type="button"
+            disabled={!inputVal.trim() && !nextStep}
+          >
+            ➤
+          </button>
         </div>
       </div>
-    </main>
+    </div>
   )
 }
