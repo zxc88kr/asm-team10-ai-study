@@ -1,5 +1,6 @@
 import type { KeyboardEvent } from 'react'
 import { useRef, useEffect, useState } from 'react'
+import { Bot, User, HelpCircle, Bell, RotateCcw, Paperclip, Mic, Send } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
 import { SCENARIO } from '../data/scenario'
 
@@ -43,24 +44,26 @@ export default function ChatPanel() {
     <div className="chat">
       <div className="chat-head">
         <div className="chat-head-left">
-          <div className="chat-head-avatar">🤖</div>
+          <div className="chat-head-avatar"><Bot size={20} /></div>
           <div>
             <h1>AI 주거 코치</h1>
             <p>대화로 조건을 파악하고 맞춤 매물을 추천합니다</p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button className="btn-icon" type="button">❓</button>
-          <button className="btn-icon" type="button">🔔</button>
-          <button className="btn-icon" onClick={reset} type="button">↺ 초기화</button>
+          <button className="btn-icon" type="button" aria-label="도움말"><HelpCircle size={15} /></button>
+          <button className="btn-icon" type="button" aria-label="알림"><Bell size={15} /></button>
+          <button className="btn-icon" onClick={reset} type="button">
+            <RotateCcw size={13} /> 초기화
+          </button>
         </div>
       </div>
 
       <div className="chat-scroll" ref={scrollRef}>
         {messages.map((msg, i) => (
           <div key={i} className={`msg ${msg.role}`}>
-            {msg.role === 'ai' && <div className="avatar">🤖</div>}
-            {msg.role === 'user' && <div className="avatar user-av">👤</div>}
+            {msg.role === 'ai' && <div className="avatar"><Bot size={15} /></div>}
+            {msg.role === 'user' && <div className="avatar user-av"><User size={15} /></div>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: '100%' }}>
               {msg.searching ? (
                 <div className="searching-bubble">
@@ -82,7 +85,7 @@ export default function ChatPanel() {
 
         {isTyping && (
           <div className="msg ai typing">
-            <div className="avatar">🤖</div>
+            <div className="avatar"><Bot size={15} /></div>
             <div className="bubble">
               <span className="dot" />
               <span className="dot" />
@@ -105,8 +108,12 @@ export default function ChatPanel() {
           </div>
         )}
         <div className="composer-row">
-          <button className="btn-icon" style={{ borderRadius: 20, padding: '8px 10px' }} type="button">📎</button>
-          <button className="btn-icon" style={{ borderRadius: 20, padding: '8px 10px' }} type="button">⌨️</button>
+          <button className="btn-icon" style={{ borderRadius: 20, padding: '8px 10px' }} type="button" aria-label="파일 첨부">
+            <Paperclip size={15} />
+          </button>
+          <button className="btn-icon" style={{ borderRadius: 20, padding: '8px 10px' }} type="button" aria-label="음성 입력">
+            <Mic size={15} />
+          </button>
           <input
             ref={inputRef}
             className="chat-input"
@@ -120,8 +127,9 @@ export default function ChatPanel() {
             onClick={() => handleSend()}
             type="button"
             disabled={!inputVal.trim() && !nextStep}
+            aria-label="보내기"
           >
-            ➤
+            <Send size={16} />
           </button>
         </div>
       </div>

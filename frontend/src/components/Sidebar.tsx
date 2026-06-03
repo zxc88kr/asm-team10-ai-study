@@ -1,11 +1,19 @@
+import { Home, MessageCircle, Building2, MapPin, Bookmark, Check } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
 
-const NAV_ITEMS = [
-  { icon: '🏠', label: '홈', id: 'home' },
-  { icon: '💬', label: '대화', id: 'chat' },
-  { icon: '🏘️', label: '추천 매물', id: 'listings' },
-  { icon: '📍', label: '입지 분석', id: 'analysis' },
-  { icon: '🔖', label: '저장한 매물', id: 'saved' },
+interface NavItem {
+  icon: LucideIcon
+  label: string
+  id: string
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { icon: Home, label: '홈', id: 'home' },
+  { icon: MessageCircle, label: '대화', id: 'chat' },
+  { icon: Building2, label: '추천 매물', id: 'listings' },
+  { icon: MapPin, label: '입지 분석', id: 'analysis' },
+  { icon: Bookmark, label: '저장한 매물', id: 'saved' },
 ]
 
 interface StepConfig {
@@ -44,22 +52,25 @@ export default function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="brand">
-        <div className="brand-mark">🏡</div>
+        <div className="brand-mark"><Home size={16} strokeWidth={2.5} /></div>
         <span className="brand-name">RoomPilot</span>
       </div>
 
       <nav className="nav">
-        {NAV_ITEMS.map(item => (
-          <button
-            key={item.id}
-            className={`nav-item${activeNavId === item.id ? ' active' : ''}`}
-            onClick={() => handleNavClick(item.id)}
-            type="button"
-          >
-            <span className="nav-ic">{item.icon}</span>
-            <span>{item.label}</span>
-          </button>
-        ))}
+        {NAV_ITEMS.map(item => {
+          const Icon = item.icon
+          return (
+            <button
+              key={item.id}
+              className={`nav-item${activeNavId === item.id ? ' active' : ''}`}
+              onClick={() => handleNavClick(item.id)}
+              type="button"
+            >
+              <span className="nav-ic"><Icon size={16} /></span>
+              <span>{item.label}</span>
+            </button>
+          )
+        })}
       </nav>
 
       <div className="steps-section">
@@ -70,7 +81,7 @@ export default function Sidebar() {
             return (
               <li key={step.label} className={`step ${state === 'done' ? 'done' : state === 'active' ? 'active' : ''}`}>
                 <div className="step-dot">
-                  {state === 'done' ? '✓' : i + 1}
+                  {state === 'done' ? <Check size={12} strokeWidth={3} /> : i + 1}
                 </div>
                 <div className="step-text">
                   <span className="step-label">{step.label}</span>
@@ -84,7 +95,7 @@ export default function Sidebar() {
 
       <div className="sidebar-foot">
         <div className="help-card">
-          <div className="help-icon">🏡</div>
+          <div className="help-icon"><Home size={24} /></div>
           <div className="help-title">{helpTitle}</div>
           <div className="help-desc">{helpDesc}</div>
           <button className="help-btn" onClick={reset} type="button">

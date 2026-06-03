@@ -1,12 +1,23 @@
+import { Building2, Wallet, Clock, Ban, Star, Pencil } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
 import { PRIORITY } from '../data/scenario'
 
-const CONDITION_DISPLAY = [
-  { key: 'company', icon: '🏢', iconBg: '#EEF3FF', label: '회사/학교', color: '#4B7BF5', valBg: '#EEF3FF', valColor: '#4B7BF5' },
-  { key: 'rent', icon: '💰', iconBg: '#DCFCE7', label: '월 고정비', color: '#22C55E', valBg: '#DCFCE7', valColor: '#16A34A' },
-  { key: 'commute', icon: '⏱️', iconBg: '#DCFCE7', label: '출퇴근', color: '#22C55E', valBg: '#DCFCE7', valColor: '#16A34A' },
-  { key: 'exclude', icon: '🚫', iconBg: '#FEE2E2', label: '제외 조건', color: '#EF4444', valBg: '#FEE2E2', valColor: '#DC2626' },
-  { key: 'priority', icon: '⭐', iconBg: '#FEF3C7', label: '우선순위', color: '#F59E0B', valBg: '#FEF3C7', valColor: '#D97706' },
+interface ConditionConfig {
+  key: string
+  icon: LucideIcon
+  iconBg: string
+  label: string
+  valBg: string
+  valColor: string
+}
+
+const CONDITION_DISPLAY: ConditionConfig[] = [
+  { key: 'company',  icon: Building2, iconBg: '#EEF3FF', label: '회사/학교',  valBg: '#EEF3FF', valColor: '#4B7BF5' },
+  { key: 'rent',     icon: Wallet,    iconBg: '#DCFCE7', label: '월 고정비',  valBg: '#DCFCE7', valColor: '#16A34A' },
+  { key: 'commute',  icon: Clock,     iconBg: '#DCFCE7', label: '출퇴근',     valBg: '#DCFCE7', valColor: '#16A34A' },
+  { key: 'exclude',  icon: Ban,       iconBg: '#FEE2E2', label: '제외 조건',  valBg: '#FEE2E2', valColor: '#DC2626' },
+  { key: 'priority', icon: Star,      iconBg: '#FEF3C7', label: '우선순위',   valBg: '#FEF3C7', valColor: '#D97706' },
 ]
 
 export default function ConditionSummary({ showEdit = false }: { showEdit?: boolean }) {
@@ -33,7 +44,11 @@ export default function ConditionSummary({ showEdit = false }: { showEdit?: bool
       <div className="card cond-summary">
         <div className="card-head">
           <h2>내 조건 요약</h2>
-          {showEdit && <button className="card-link" type="button">✏️ 편집</button>}
+          {showEdit && (
+            <button className="card-link" type="button">
+              <Pencil size={12} style={{ marginRight: 3 }} /> 편집
+            </button>
+          )}
         </div>
         <p style={{ fontSize: 12, color: 'var(--muted)', padding: '4px 0' }}>
           대화를 통해 조건을 설정해주세요.
@@ -46,24 +61,34 @@ export default function ConditionSummary({ showEdit = false }: { showEdit?: bool
     <div className="card cond-summary">
       <div className="card-head">
         <h2>내 조건 요약</h2>
-        {showEdit && <button className="card-link" type="button">✏️ {showEdit ? '수정' : '편집'}</button>}
-        {!showEdit && <span style={{ fontSize: 11, color: 'var(--muted)' }}>✏️ 편집</span>}
+        {showEdit ? (
+          <button className="card-link" type="button">
+            <Pencil size={12} style={{ marginRight: 3 }} /> 수정
+          </button>
+        ) : (
+          <span style={{ fontSize: 11, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 3 }}>
+            <Pencil size={11} /> 편집
+          </span>
+        )}
       </div>
       <div className="cond-rows">
-        {activeRows.map(row => (
-          <div key={row.key} className="cond-row">
-            <div className="cond-row-icon" style={{ background: row.iconBg }}>
-              {row.icon}
+        {activeRows.map(row => {
+          const Icon = row.icon
+          return (
+            <div key={row.key} className="cond-row">
+              <div className="cond-row-icon" style={{ background: row.iconBg }}>
+                <Icon size={13} />
+              </div>
+              <span className="cond-row-key">{row.label}</span>
+              <span
+                className="cond-row-val"
+                style={{ background: row.valBg, color: row.valColor }}
+              >
+                {displayValues[row.key]}
+              </span>
             </div>
-            <span className="cond-row-key">{row.label}</span>
-            <span
-              className="cond-row-val"
-              style={{ background: row.valBg, color: row.valColor }}
-            >
-              {displayValues[row.key]}
-            </span>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
