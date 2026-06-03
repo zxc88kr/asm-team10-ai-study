@@ -1,13 +1,13 @@
 import ConditionSummary from './ConditionSummary'
 import RecommendationList from './RecommendationList'
-import LocationAnalysis from './LocationAnalysis'
+import LocationAnalysisSummary from './LocationAnalysis'
 
 export default function RightPanels() {
   return (
-    <section className="panels">
+    <div className="panels">
       <ConditionSummary />
       <RecommendationList />
-      <LocationAnalysis />
-    </section>
+      <LocationAnalysisSummary />
+    </div>
   )
 }

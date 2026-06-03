@@ -1,60 +1,55 @@
 import useAppStore from '../store/useAppStore'
 
-export default function LocationAnalysis() {
+export default function LocationAnalysisSummary() {
   const lastTop = useAppStore(s => s.lastTop)
 
-  if (!lastTop?.[0]) {
-    return (
-      <div className="card">
-        <div className="card-head"><h2>입지 분석 요약</h2></div>
-        <div className="empty">추천 매물의 입지를 당신의 생활 기준으로 해석해요.</div>
-      </div>
-    )
+  if (!lastTop || lastTop.length === 0) return null
+
+  const top = lastTop[0].L
+  const analysis = top.locationAnalysis
+
+  const safetyScore = analysis.scoreBreakdown.find(b => b.label === '안전')?.score ?? 0
+  const commuteScore = analysis.scoreBreakdown.find(b => b.label === '통학/출근')?.score ?? 0
+  const convScore = analysis.scoreBreakdown.find(b => b.label === '생활 편의성')?.score ?? 0
+
+  const getQuality = (score: number): 'good' | 'ok' | 'poor' => {
+    if (score >= 80) return 'good'
+    if (score >= 60) return 'ok'
+    return 'poor'
   }
+  const getLabel = (quality: 'good' | 'ok' | 'poor') =>
+    quality === 'good' ? '매우 좋음' : quality === 'ok' ? '좋음' : '보통 이상'
 
-  const { L } = lastTop[0]
-  const safe = L.night.lit && L.night.mainRoad
-    ? (L.night.alleyM <= 80 ? 0.88 : 0.62)
-    : 0.4
-  const commute = Math.max(0.2, 1 - (L.walkMin - 8) / 30)
-  const conv = Math.min(1, L.options.length / 6)
-
-  const bars: [string, number][] = [
-    ['귀가 안전동선', safe],
-    ['통학 시간', commute],
-    ['편의시설', conv],
+  const bars = [
+    { key: '출퇴근', score: commuteScore, quality: getQuality(commuteScore) },
+    { key: '편의시설', score: convScore, quality: getQuality(convScore) },
+    { key: '안전성', score: safetyScore, quality: getQuality(safetyScore) },
   ]
-
-  const safetyTxt = safe >= 0.85
-    ? `정류장에서 큰길을 따라 도보 약 ${Math.round(L.night.alleyM / 70 + 3)}분, 가로등도 밝아 밤 11시 귀가도 안심이에요.`
-    : safe >= 0.6
-    ? `큰길과 가까우나 골목 ${L.night.alleyM}m 구간이 있어 늦은 귀가 시 약간 신경 쓰일 수 있어요.`
-    : `골목이 어두운 편이라 밤 11시 알바 귀가에는 주의가 필요해요.`
 
   return (
     <div className="card">
-      <div className="card-head"><h2>입지 분석 요약</h2></div>
-
-      <div className="loc-target">
-        <b>1위 · {L.name}</b> 를 당신의 생활 기준으로 해석했어요
+      <div className="card-head">
+        <h2>입지 분석 요약</h2>
+        <button className="card-link" type="button">자세히 보기</button>
       </div>
-
-      <ul className="loc-bars">
-        {bars.map(([k, v]) => {
-          const cls = v >= 0.75 ? 'good' : v >= 0.5 ? 'ok' : 'poor'
-          return (
-            <li key={k}>
-              <span className="loc-k">{k}</span>
-              <span className="bar">
-                <span className={`fill ${cls}`} style={{ width: `${Math.round(v * 100)}%` }} />
-              </span>
-            </li>
-          )
-        })}
-      </ul>
-
-      <p className="loc-comment">
-        밤 11시 알바 귀가 기준 — {safetyTxt} 학교까지는 도보 {L.walkMin}분.
+      <div className="loc-summary-bars">
+        {bars.map(bar => (
+          <div key={bar.key} className="loc-bar-row">
+            <span className="loc-bar-key">{bar.key}</span>
+            <div className="bar-track">
+              <span
+                className={`bar-fill ${bar.quality}`}
+                style={{ width: `${bar.score}%` }}
+              />
+            </div>
+            <span className="loc-bar-val" style={{ color: bar.quality === 'good' ? 'var(--green)' : bar.quality === 'ok' ? 'var(--amber)' : 'var(--red)' }}>
+              {getLabel(bar.quality)}
+            </span>
+          </div>
+        ))}
+      </div>
+      <p className="loc-note">
+        ⓘ 분석 정보는 참고용이며, 실제와 다를 수 있습니다.
       </p>
     </div>
   )
