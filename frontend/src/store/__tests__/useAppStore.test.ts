@@ -1,8 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { act } from '@testing-library/react'
 import useAppStore, { scoreClass, STATUS_KO } from '../useAppStore'
-import type { ScoredListing } from '../../types'
-import { LISTINGS } from '../../data/listings'
 
 beforeEach(() => {
   act(() => useAppStore.getState().reset())
@@ -25,6 +23,10 @@ describe('초기 상태', () => {
 
   it('currentStep이 1', () => {
     expect(useAppStore.getState().currentStep).toBe(1)
+  })
+
+  it('activeView가 chat으로 시작', () => {
+    expect(useAppStore.getState().activeView).toBe('chat')
   })
 })
 
@@ -88,25 +90,19 @@ describe('showToast / toastMessage', () => {
   })
 })
 
-describe('openModal / closeModal', () => {
-  const fakeListing: ScoredListing = {
-    L: LISTINGS[0],
-    excluded: false,
-    score: 90,
-    breakdown: [],
-    penalty: 0,
-  }
-
-  it('openModal 후 modalListing이 설정됨', () => {
-    act(() => useAppStore.getState().openModal(fakeListing))
-    expect(useAppStore.getState().modalListing).toEqual(fakeListing)
+describe('openAnalysis / closeAnalysis', () => {
+  it('openAnalysis 후 activeView가 analysis', () => {
+    act(() => useAppStore.getState().openAnalysis('A'))
+    expect(useAppStore.getState().activeView).toBe('analysis')
+    expect(useAppStore.getState().selectedListingId).toBe('A')
   })
 
-  it('closeModal 후 modalListing이 null', () => {
+  it('closeAnalysis 후 activeView가 chat', () => {
     act(() => {
-      useAppStore.getState().openModal(fakeListing)
-      useAppStore.getState().closeModal()
+      useAppStore.getState().openAnalysis('A')
+      useAppStore.getState().closeAnalysis()
     })
-    expect(useAppStore.getState().modalListing).toBeNull()
+    expect(useAppStore.getState().activeView).toBe('chat')
+    expect(useAppStore.getState().selectedListingId).toBeNull()
   })
 })
