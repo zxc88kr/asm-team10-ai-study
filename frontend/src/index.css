@@ -47,9 +47,11 @@ body {
 .app {
   display: grid;
   grid-template-columns: 200px 1fr 340px;
+  grid-template-rows: 100vh;
   height: 100vh;
   max-width: 1440px;
   margin: 0 auto;
+  overflow: hidden;
 }
 
 /* ── 사이드바 ── */
@@ -206,7 +208,7 @@ body {
 .card-link:hover { text-decoration: underline; }
 
 /* ── 채팅 ── */
-.chat { display: flex; flex-direction: column; background: var(--bg); min-width: 0; }
+.chat { display: flex; flex-direction: column; background: var(--bg); min-width: 0; overflow: hidden; }
 .chat-head {
   display: flex;
   justify-content: space-between;
