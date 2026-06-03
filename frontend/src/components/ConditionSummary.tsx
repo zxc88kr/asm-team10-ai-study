@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import useAppStore from '../store/useAppStore'
 import { CONDITION_CARDS, CATEGORY_CLASS } from '../data/conditions'
 import { PRIORITY } from '../data/scenario'
+import type { CardSource } from '../types'
 
 export default function ConditionSummary() {
   const hard = useAppStore(s => s.hard)
@@ -93,7 +94,15 @@ export default function ConditionSummary() {
   )
 }
 
-function CondItem({ category, label, value, source, reason }) {
+interface CondItemProps {
+  category: string
+  label: string
+  value: string
+  source: CardSource
+  reason: string
+}
+
+function CondItem({ category, label, value, source, reason }: CondItemProps) {
   return (
     <li className="cond-item">
       <div className="cond-top">

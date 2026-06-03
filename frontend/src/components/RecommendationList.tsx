@@ -1,5 +1,6 @@
 import useAppStore, { STATUS_KO, scoreClass } from '../store/useAppStore'
 import { LISTINGS } from '../data/listings'
+import type { ScoredListing } from '../types'
 
 export default function RecommendationList() {
   const lastTop = useAppStore(s => s.lastTop)
@@ -28,7 +29,13 @@ export default function RecommendationList() {
   )
 }
 
-function RecItem({ s, idx, onClick }) {
+interface RecItemProps {
+  s: ScoredListing
+  idx: number
+  onClick: () => void
+}
+
+function RecItem({ s, idx, onClick }: RecItemProps) {
   const chips = s.breakdown.map(b => (
     <span key={b.cid} className={`mini ${b.status}`}>
       {b.label.split(/[ ·(]/)[0]} {STATUS_KO[b.status]}
