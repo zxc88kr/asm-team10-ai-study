@@ -2,12 +2,12 @@ import { describe, it, expect } from 'vitest'
 import { LISTINGS } from '../listings'
 
 describe('LISTINGS', () => {
-  it('6개의 매물이 있음', () => {
-    expect(LISTINGS).toHaveLength(6)
+  it('3개의 매물이 있음', () => {
+    expect(LISTINGS).toHaveLength(3)
   })
 
   it('각 매물이 필수 필드를 모두 가짐', () => {
-    const requiredFields = ['id', 'name', 'type', 'area', 'deposit', 'rent', 'pyeong', 'floor', 'options', 'walkMin', 'night', 'nightTransit', 'thumb', 'desc']
+    const requiredFields = ['id', 'name', 'type', 'area', 'deposit', 'rent', 'pyeong', 'floor', 'options', 'commuteMin', 'night', 'nightTransit', 'thumb', 'desc', 'locationAnalysis']
     LISTINGS.forEach(listing => {
       requiredFields.forEach(field => {
         expect(listing, `매물 ${listing.id}에 ${field} 필드 없음`).toHaveProperty(field)
@@ -41,5 +41,12 @@ describe('LISTINGS', () => {
   it('id가 고유함', () => {
     const ids = LISTINGS.map(l => l.id)
     expect(new Set(ids).size).toBe(ids.length)
+  })
+
+  it('locationAnalysis에 scoreBreakdown이 있음', () => {
+    LISTINGS.forEach(listing => {
+      expect(listing.locationAnalysis.scoreBreakdown).toBeDefined()
+      expect(listing.locationAnalysis.scoreBreakdown.length).toBeGreaterThan(0)
+    })
   })
 })
