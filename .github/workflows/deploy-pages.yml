@@ -5,13 +5,11 @@ on:
     branches: ["main"]
   workflow_dispatch:
 
-# Pages 배포에 필요한 권한 (PAT 없이 GITHUB_TOKEN으로 Pages 자동 활성화/배포)
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# 동시 배포 1건만 유지
 concurrency:
   group: "pages"
   cancel-in-progress: true
@@ -26,13 +24,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 레포 소유자가 Settings → Pages → Source 를 "GitHub Actions"로 한 번 설정해두면
-      # 이후 main 푸시마다 자동 배포됩니다. (enablement 자동화는 admin 권한이 필요해 제거)
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
