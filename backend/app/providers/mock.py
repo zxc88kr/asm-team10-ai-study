@@ -124,7 +124,7 @@ class MockProvider(Provider):
         loc = dict(listing.location)
         loc["basis"] = self._basis(cards, priority_order, listing)
         loc["scoreBreakdown"] = self._loc_scores(listing)
-        loc["dataSource"] = "seed"
+        loc.setdefault("dataSource", "seed")  # OSM enrich 시 실데이터 출처 보존
         return loc
 
     # ------------------------------------------------------------- internals

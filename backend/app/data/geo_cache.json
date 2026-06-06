@@ -1,0 +1,565 @@
+{
+  "A": {
+    "geo": {
+      "lat": 35.2298,
+      "lng": 129.0865,
+      "campus_walk_min": 4,
+      "station_walk_min": 3,
+      "subway": "부산대역",
+      "line": "1호선",
+      "counts": {
+        "convenience": 9,
+        "supermarket": 11,
+        "cafe": 9,
+        "pharmacy": 0,
+        "hospital": 7,
+        "police": 1,
+        "subway": 1,
+        "bus": 33,
+        "street_lamp": 0
+      }
+    },
+    "location": {
+      "commute": {
+        "legs": [
+          {
+            "label": "집",
+            "minutes": 0,
+            "type": "walk"
+          },
+          {
+            "label": "부산대",
+            "minutes": 3,
+            "type": "subway"
+          },
+          {
+            "label": "부산대 정문",
+            "minutes": 4,
+            "type": "walk"
+          }
+        ],
+        "totalMinutes": 4,
+        "transfers": 0,
+        "mainNote": "부산대 정문까지 도보 약 4분 (OSRM 실측)"
+      },
+      "nightSafety": [
+        {
+          "icon": "shopping-bag",
+          "label": "편의점 다소 거리",
+          "detail": "가장 가까운 편의점 도보 6분",
+          "pass": false
+        },
+        {
+          "icon": "shield",
+          "label": "인근 지구대·파출소",
+          "detail": "도보 약 1분",
+          "pass": true
+        }
+      ],
+      "convenience": [
+        {
+          "name": "편의점",
+          "walkMin": 6,
+          "icon": "shopping-bag"
+        },
+        {
+          "name": "마트",
+          "walkMin": 2,
+          "icon": "shopping-cart"
+        },
+        {
+          "name": "카페",
+          "walkMin": 2,
+          "icon": "coffee"
+        },
+        {
+          "name": "병원",
+          "walkMin": 3,
+          "icon": "stethoscope"
+        }
+      ],
+      "pros": [
+        "부산대 정문 도보 4분 (가까움)",
+        "마트 도보 2분"
+      ],
+      "cons": [
+        "가로등 데이터 미수록 — 야간 동선 직접 확인 권장"
+      ],
+      "aiComment": "OSM 공공데이터 실측: 통학 도보 4분, 편의점 도보 6분, 야간 안전 지표 1/2 충족.",
+      "dataSource": "OpenStreetMap(ODbL) · OSRM 실측",
+      "facts": {
+        "counts": {
+          "convenience": 9,
+          "supermarket": 11,
+          "cafe": 9,
+          "pharmacy": 0,
+          "hospital": 7,
+          "police": 1,
+          "subway": 1,
+          "bus": 33,
+          "street_lamp": 0
+        },
+        "nearest": {
+          "supermarket": {
+            "distanceM": 180,
+            "walkMin": 2,
+            "name": "센스플라워마트"
+          },
+          "hospital": {
+            "distanceM": 192,
+            "walkMin": 3,
+            "name": "갤러리안과의원 (Gallery Eye Clinic)"
+          },
+          "bus": {
+            "distanceM": 84,
+            "walkMin": 1,
+            "name": "부산대앞부산은행"
+          },
+          "cafe": {
+            "distanceM": 140,
+            "walkMin": 2,
+            "name": "Nohs Coffee"
+          },
+          "police": {
+            "distanceM": 94,
+            "walkMin": 1,
+            "name": "장전지구대"
+          },
+          "convenience": {
+            "distanceM": 451,
+            "walkMin": 6,
+            "name": "GS25"
+          },
+          "subway": {
+            "distanceM": 260,
+            "walkMin": 3,
+            "name": "부산대"
+          }
+        },
+        "campusWalkMin": 4
+      }
+    },
+    "fetchedAt": "2026-06-06T12:00:01.527147+00:00",
+    "source": "OpenStreetMap(ODbL) · OSRM 실측"
+  },
+  "B": {
+    "geo": {
+      "lat": 35.2315,
+      "lng": 129.084,
+      "campus_walk_min": 3,
+      "station_walk_min": 7,
+      "subway": "부산대역",
+      "line": "1호선",
+      "counts": {
+        "convenience": 12,
+        "supermarket": 11,
+        "cafe": 13,
+        "pharmacy": 0,
+        "hospital": 12,
+        "police": 1,
+        "subway": 1,
+        "bus": 32,
+        "street_lamp": 0
+      }
+    },
+    "location": {
+      "commute": {
+        "legs": [
+          {
+            "label": "집",
+            "minutes": 0,
+            "type": "walk"
+          },
+          {
+            "label": "부산대",
+            "minutes": 7,
+            "type": "subway"
+          },
+          {
+            "label": "부산대 정문",
+            "minutes": 3,
+            "type": "walk"
+          }
+        ],
+        "totalMinutes": 3,
+        "transfers": 0,
+        "mainNote": "부산대 정문까지 도보 약 3분 (OSRM 실측)"
+      },
+      "nightSafety": [
+        {
+          "icon": "shopping-bag",
+          "label": "편의점 다소 거리",
+          "detail": "가장 가까운 편의점 도보 4분",
+          "pass": false
+        },
+        {
+          "icon": "shield",
+          "label": "인근 지구대·파출소",
+          "detail": "도보 약 4분",
+          "pass": true
+        }
+      ],
+      "convenience": [
+        {
+          "name": "편의점",
+          "walkMin": 4,
+          "icon": "shopping-bag"
+        },
+        {
+          "name": "마트",
+          "walkMin": 1,
+          "icon": "shopping-cart"
+        },
+        {
+          "name": "카페",
+          "walkMin": 1,
+          "icon": "coffee"
+        },
+        {
+          "name": "병원",
+          "walkMin": 2,
+          "icon": "stethoscope"
+        }
+      ],
+      "pros": [
+        "부산대 정문 도보 3분 (가까움)",
+        "마트 도보 1분"
+      ],
+      "cons": [
+        "가로등 데이터 미수록 — 야간 동선 직접 확인 권장"
+      ],
+      "aiComment": "OSM 공공데이터 실측: 통학 도보 3분, 편의점 도보 4분, 야간 안전 지표 1/2 충족.",
+      "dataSource": "OpenStreetMap(ODbL) · OSRM 실측",
+      "facts": {
+        "counts": {
+          "convenience": 12,
+          "supermarket": 11,
+          "cafe": 13,
+          "pharmacy": 0,
+          "hospital": 12,
+          "police": 1,
+          "subway": 1,
+          "bus": 32,
+          "street_lamp": 0
+        },
+        "nearest": {
+          "supermarket": {
+            "distanceM": 60,
+            "walkMin": 1,
+            "name": "백세건강마트"
+          },
+          "hospital": {
+            "distanceM": 168,
+            "walkMin": 2,
+            "name": "갤러리안과의원 (Gallery Eye Clinic)"
+          },
+          "bus": {
+            "distanceM": 67,
+            "walkMin": 1,
+            "name": "부산대정문"
+          },
+          "cafe": {
+            "distanceM": 83,
+            "walkMin": 1,
+            "name": "스타벅스 부산대정문점"
+          },
+          "police": {
+            "distanceM": 324,
+            "walkMin": 4,
+            "name": "장전지구대"
+          },
+          "convenience": {
+            "distanceM": 301,
+            "walkMin": 4,
+            "name": "GS25"
+          },
+          "subway": {
+            "distanceM": 529,
+            "walkMin": 7,
+            "name": "부산대"
+          }
+        },
+        "campusWalkMin": 3
+      }
+    },
+    "fetchedAt": "2026-06-06T12:01:18.714507+00:00",
+    "source": "OpenStreetMap(ODbL) · OSRM 실측"
+  },
+  "C": {
+    "geo": {
+      "lat": 35.247,
+      "lng": 129.0918,
+      "campus_walk_min": 6,
+      "station_walk_min": 1,
+      "subway": "구서역",
+      "line": "1호선",
+      "counts": {
+        "convenience": 2,
+        "supermarket": 5,
+        "cafe": 0,
+        "pharmacy": 0,
+        "hospital": 4,
+        "police": 4,
+        "subway": 1,
+        "bus": 30,
+        "street_lamp": 0
+      }
+    },
+    "location": {
+      "commute": {
+        "legs": [
+          {
+            "label": "집",
+            "minutes": 0,
+            "type": "walk"
+          },
+          {
+            "label": "구서",
+            "minutes": 1,
+            "type": "subway"
+          },
+          {
+            "label": "부산대 정문",
+            "minutes": 6,
+            "type": "walk"
+          }
+        ],
+        "totalMinutes": 6,
+        "transfers": 0,
+        "mainNote": "부산대 정문까지 도보 약 6분 (OSRM 실측)"
+      },
+      "nightSafety": [
+        {
+          "icon": "shopping-bag",
+          "label": "편의점 다소 거리",
+          "detail": "가장 가까운 편의점 도보 6분",
+          "pass": false
+        },
+        {
+          "icon": "shield",
+          "label": "인근 지구대·파출소",
+          "detail": "도보 약 1분",
+          "pass": true
+        }
+      ],
+      "convenience": [
+        {
+          "name": "편의점",
+          "walkMin": 6,
+          "icon": "shopping-bag"
+        },
+        {
+          "name": "마트",
+          "walkMin": 2,
+          "icon": "shopping-cart"
+        },
+        {
+          "name": "병원",
+          "walkMin": 2,
+          "icon": "stethoscope"
+        }
+      ],
+      "pros": [
+        "부산대 정문 도보 6분 (가까움)",
+        "마트 도보 2분"
+      ],
+      "cons": [
+        "가로등 데이터 미수록 — 야간 동선 직접 확인 권장"
+      ],
+      "aiComment": "OSM 공공데이터 실측: 통학 도보 6분, 편의점 도보 6분, 야간 안전 지표 1/2 충족.",
+      "dataSource": "OpenStreetMap(ODbL) · OSRM 실측",
+      "facts": {
+        "counts": {
+          "convenience": 2,
+          "supermarket": 5,
+          "cafe": 0,
+          "pharmacy": 0,
+          "hospital": 4,
+          "police": 4,
+          "subway": 1,
+          "bus": 30,
+          "street_lamp": 0
+        },
+        "nearest": {
+          "subway": {
+            "distanceM": 55,
+            "walkMin": 1,
+            "name": "구서"
+          },
+          "police": {
+            "distanceM": 27,
+            "walkMin": 1,
+            "name": "금정경찰서"
+          },
+          "supermarket": {
+            "distanceM": 138,
+            "walkMin": 2,
+            "name": "열쇠마트"
+          },
+          "hospital": {
+            "distanceM": 123,
+            "walkMin": 2,
+            "name": "태곤한의원"
+          },
+          "bus": {
+            "distanceM": 33,
+            "walkMin": 1,
+            "name": "구서역"
+          },
+          "convenience": {
+            "distanceM": 480,
+            "walkMin": 6,
+            "name": "GS슈퍼"
+          }
+        },
+        "campusWalkMin": 6
+      }
+    },
+    "fetchedAt": "2026-06-06T12:01:37.095103+00:00",
+    "source": "OpenStreetMap(ODbL) · OSRM 실측"
+  },
+  "D": {
+    "geo": {
+      "lat": 35.235,
+      "lng": 129.0832,
+      "campus_walk_min": 2,
+      "station_walk_min": 8,
+      "subway": "부산대역",
+      "line": "1호선",
+      "counts": {
+        "convenience": 11,
+        "supermarket": 11,
+        "cafe": 13,
+        "pharmacy": 0,
+        "hospital": 15,
+        "police": 1,
+        "subway": 1,
+        "bus": 29,
+        "street_lamp": 0
+      }
+    },
+    "location": {
+      "commute": {
+        "legs": [
+          {
+            "label": "집",
+            "minutes": 0,
+            "type": "walk"
+          },
+          {
+            "label": "장전",
+            "minutes": 8,
+            "type": "subway"
+          },
+          {
+            "label": "부산대 정문",
+            "minutes": 2,
+            "type": "walk"
+          }
+        ],
+        "totalMinutes": 2,
+        "transfers": 0,
+        "mainNote": "부산대 정문까지 도보 약 2분 (OSRM 실측)"
+      },
+      "nightSafety": [
+        {
+          "icon": "shopping-bag",
+          "label": "심야 편의점 근접",
+          "detail": "가장 가까운 편의점 도보 1분",
+          "pass": true
+        },
+        {
+          "icon": "shield",
+          "label": "인근 지구대·파출소",
+          "detail": "도보 약 9분",
+          "pass": true
+        }
+      ],
+      "convenience": [
+        {
+          "name": "편의점",
+          "walkMin": 1,
+          "icon": "shopping-bag"
+        },
+        {
+          "name": "마트",
+          "walkMin": 2,
+          "icon": "shopping-cart"
+        },
+        {
+          "name": "카페",
+          "walkMin": 2,
+          "icon": "coffee"
+        },
+        {
+          "name": "병원",
+          "walkMin": 5,
+          "icon": "stethoscope"
+        }
+      ],
+      "pros": [
+        "부산대 정문 도보 2분 (가까움)",
+        "편의점 도보 1분",
+        "마트 도보 2분"
+      ],
+      "cons": [
+        "가로등 데이터 미수록 — 야간 동선 직접 확인 권장"
+      ],
+      "aiComment": "OSM 공공데이터 실측: 통학 도보 2분, 편의점 도보 1분, 야간 안전 지표 2/2 충족.",
+      "dataSource": "OpenStreetMap(ODbL) · OSRM 실측",
+      "facts": {
+        "counts": {
+          "convenience": 11,
+          "supermarket": 11,
+          "cafe": 13,
+          "pharmacy": 0,
+          "hospital": 15,
+          "police": 1,
+          "subway": 1,
+          "bus": 29,
+          "street_lamp": 0
+        },
+        "nearest": {
+          "subway": {
+            "distanceM": 571,
+            "walkMin": 8,
+            "name": "장전"
+          },
+          "supermarket": {
+            "distanceM": 163,
+            "walkMin": 2,
+            "name": "해피마트"
+          },
+          "hospital": {
+            "distanceM": 356,
+            "walkMin": 5,
+            "name": "최내과의원"
+          },
+          "cafe": {
+            "distanceM": 152,
+            "walkMin": 2,
+            "name": "커피빌리지"
+          },
+          "police": {
+            "distanceM": 706,
+            "walkMin": 9,
+            "name": "장전지구대"
+          },
+          "convenience": {
+            "distanceM": 65,
+            "walkMin": 1,
+            "name": "미니스톱 부산대 북문점"
+          },
+          "bus": {
+            "distanceM": 264,
+            "walkMin": 4,
+            "name": "장전중앙교회"
+          }
+        },
+        "campusWalkMin": 2
+      }
+    },
+    "fetchedAt": "2026-06-06T12:01:44.827564+00:00",
+    "source": "OpenStreetMap(ODbL) · OSRM 실측"
+  }
+}

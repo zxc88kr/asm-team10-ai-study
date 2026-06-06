@@ -105,34 +105,35 @@ class UpstageProvider(Provider):
         self, listing: Listing, cards: list[ConditionCard]
     ) -> tuple[list[MatchResult], str | None]:
         soft = [c for c in cards if c.kind == "soft"]
-        valid_ids = {c.id for c in soft}
-        payload = {
-            "desc": listing.desc,
-            "cards": [{"id": c.id, "label": c.label, "category": c.category} for c in soft],
-        }
-        out = self._structured(
-            self._llm_pro,
-            SCORE_SCHEMA,
-            [
-                {"role": "system", "content": SCORE_SYSTEM},
-                {"role": "user", "content": str(payload)},
-            ],
-        )
+        # transit/commute 는 desc가 아니라 geo 사실 → LLM에 맡기지 않고 결정적으로 채운다.
+        desc_cards = [c for c in soft if c.category not in ("transit", "commute")]
         breakdown: list[MatchResult] = []
-        for b in out.get("breakdown", []):
-            cid = b.get("card_id")
-            if cid not in valid_ids:
-                continue
-            status = b.get("status")
-            breakdown.append(
-                MatchResult(
-                    card_id=cid,
-                    status=status if status in VALID_STATUS else "none",
-                    evidence=b.get("evidence", "") or "",
-                )
+        tradeoff: str | None = None
+        if desc_cards:
+            out = self._structured(
+                self._llm_pro,
+                SCORE_SCHEMA,
+                [
+                    {"role": "system", "content": SCORE_SYSTEM},
+                    {"role": "user", "content": _format_score_payload(listing, desc_cards)},
+                ],
             )
-        self._fill_geo(listing, soft, breakdown)
-        return breakdown, out.get("tradeoff")
+            valid_ids = {c.id for c in desc_cards}
+            for b in out.get("breakdown", []):
+                cid = b.get("card_id")
+                if cid not in valid_ids:
+                    continue
+                status = b.get("status")
+                breakdown.append(
+                    MatchResult(
+                        card_id=cid,
+                        status=status if status in VALID_STATUS else "none",
+                        evidence=b.get("evidence", "") or "",
+                    )
+                )
+            tradeoff = out.get("tradeoff")
+        self._fill_geo(listing, soft, breakdown)  # geo 카드(역/캠퍼스 도보) 결정적 채움
+        return breakdown, tradeoff
 
     def check_grounded(self, context: str, answer: str) -> str:
         # Upstage groundedness-check 전용 모델 폐기 → LLM-as-Judge(solar-pro2, Practice09).
@@ -153,8 +154,10 @@ class UpstageProvider(Provider):
     def analyze_location(
         self, listing: Listing, cards: list[ConditionCard], priority_order: list[str]
     ) -> dict:
-        # 입지 raw(geo/location) 를 카드 관점으로 번역. 데모는 시드 location 을 기반으로 LLM 보강.
-        return {**listing.location, "dataSource": "seed"}
+        # 입지 raw(geo/location)를 카드 관점으로 번역. geo_cache(OSM 실측)가 있으면 그 출처를 보존.
+        loc = dict(listing.location)
+        loc.setdefault("dataSource", "seed")
+        return loc
 
     # ------------------------------------------------------------- internals
     def _to_card(self, c: dict, asked: list[str]) -> ConditionCard | None:
@@ -185,6 +188,19 @@ class UpstageProvider(Provider):
                 breakdown.append(
                     MatchResult(card_id=c.id, status=match_geo(c.category, wm), evidence=f"도보 {wm}분")
                 )
+
+
+def _format_score_payload(listing: Listing, cards: list[ConditionCard]) -> str:
+    """LLM 점수화 입력을 사람이 읽기 좋은 형태로 정리(원시 dict 문자열화 대신)."""
+    lines = [
+        f"[매물] {listing.name} ({listing.area})",
+        f"[설명] {listing.desc}",
+        "",
+        "[판정할 조건]",
+    ]
+    for c in cards:
+        lines.append(f'- card_id={c.id} | {c.label}({c.category}): 사용자 근거 "{c.reason}"')
+    return "\n".join(lines)
 
 
 def _card_to_hard(card: ConditionCard, text: str) -> dict:
