@@ -35,12 +35,22 @@ uvicorn app.main:app --reload
 ## 실제 Upstage 연동
 
 ```bash
-export ROOMPILOT_PROVIDER=upstage
-export UPSTAGE_API_KEY=up_xxx
+echo "UPSTAGE_API_KEY=up_xxx" > .env     # 또는 export
+ROOMPILOT_PROVIDER=upstage python scripts/smoke_upstage.py   # 5개 항목 라이브 점검
+ROOMPILOT_PROVIDER=upstage python demo.py                    # 실 API로 시나리오 재생
 ```
 
-> ⚠️ 출고 전 검증(구현스펙 §13): Groundedness Check 엔드포인트·반환값, `solar-pro2` 가용성,
-> `response_format=json_schema` 준수율. `app/providers/upstage.py`는 호출 형태 **초안**이며 라이브 검증 후 사용.
+### 라이브 검증 결과 (스모크 테스트, 구현스펙 §13 항목)
+
+| 항목 | 결과 |
+|---|---|
+| `solar-pro2` / `solar-mini` / `solar-embedding-1-large` | ✅ 가용 (임베딩 dim **4096**) |
+| `with_structured_output(dict)` | ✅ — 단, 스키마에 top-level **`title`** 필수(반영됨) |
+| Groundedness Check | ⚠️ **전용 모델(`groundedness-check`) 폐기됨** → **LLM-as-Judge(solar-pro2)** 로 대체(Practice09) |
+| 그래프 1턴 E2E (실 API) | ✅ 통과 |
+
+> Groundedness는 `solar-mini`가 오판이 잦아 플래그십 `solar-pro2`로 판정한다. 점검 스크립트:
+> [`scripts/smoke_upstage.py`](scripts/smoke_upstage.py).
 
 ## 구조
 

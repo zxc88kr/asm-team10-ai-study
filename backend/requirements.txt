@@ -7,8 +7,7 @@ uvicorn[standard]>=0.27
 sse-starlette>=2.0
 
 # --- 실제 Upstage 연동 (ROOMPILOT_PROVIDER=upstage 일 때만 필요) ---
-langchain-upstage>=0.7.7
-httpx>=0.27
+langchain-upstage>=0.7.7   # solar-pro2 / solar-mini / solar-embedding-1-large
 
 # --- 개발/테스트 ---
 pytest>=8.0

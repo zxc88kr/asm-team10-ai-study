@@ -4,7 +4,9 @@
 """
 
 # --- 의도 분류 (solar-mini) ---
+# 주의: langchain의 with_structured_output(dict)은 top-level "title"을 함수명으로 요구한다.
 INTENT_SCHEMA = {
+    "title": "classify_intent",
     "type": "object",
     "properties": {
         "intent": {
@@ -37,6 +39,7 @@ INTENT_SYSTEM = """사용자의 마지막 발화 의도를 분류한다.
 
 # --- 추출 엔진 A (solar-pro2) ---
 EXTRACT_SCHEMA = {
+    "title": "extract_cards",
     "type": "object",
     "properties": {
         "cards": {
@@ -73,6 +76,7 @@ EXTRACT_SYSTEM = """너는 RoomPilot의 '니즈 통역사'다.
 
 # --- 점수화 (solar-pro2) ---
 SCORE_SCHEMA = {
+    "title": "score_listing",
     "type": "object",
     "properties": {
         "breakdown": {
@@ -100,3 +104,22 @@ SCORE_SYSTEM = """매물 설명 텍스트와 사용자 카드를 대조해 카�
 1. 판정 근거(evidence)는 반드시 매물 설명(desc)에서 그대로 인용한다.
 2. 설명에 없는 정보는 추론하지 말고 status=none, evidence="" 로 둔다. (환각 금지)
 3. 1순위 카드 충족이 점수에 가장 크게 기여하도록 가중한다."""
+
+# --- Groundedness 판정 (LLM-as-Judge) ---
+# Upstage의 groundedness-check 전용 모델이 폐기되어, solar로 근거성을 판정한다(Practice09 Judge LLM).
+GROUNDEDNESS_SCHEMA = {
+    "title": "groundedness_verdict",
+    "type": "object",
+    "properties": {
+        "verdict": {"type": "string", "enum": ["grounded", "notGrounded", "notSure"]}
+    },
+    "required": ["verdict"],
+}
+
+GROUNDEDNESS_SYSTEM = """너는 근거성(groundedness) 심판이다. context만을 사실로 삼아 answer를 검증한다.
+- grounded: answer의 핵심 주장이 context 문장에서 직접 확인된다(동일 표현/명백한 동의어 포함).
+- notGrounded: answer가 context에 없거나 context와 모순된다.
+- notSure: context 정보가 부족해 판단 불가.
+예) context="남향이라 채광 좋음" / answer="채광 좋음" → grounded
+예) context="남향이라 채광 좋음" / answer="방음이 완벽함" → notGrounded
+verdict 하나만 출력한다."""

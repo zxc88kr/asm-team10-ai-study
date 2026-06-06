@@ -3,10 +3,10 @@
 langchain-upstage / httpx 는 이 모듈에서만 import 한다(필요 시 지연 로딩).
 설치·API 키 없이도 mock 경로는 동작하도록 클래스 import 시점에 SDK를 강제하지 않는다.
 
-⚠️ 출고 전 검증(구현스펙 §13):
-  - Groundedness Check 모델 ID·엔드포인트·반환 문자열
-  - solar-pro2/solar-pro3 가용성, response_format=json_schema 준수율
-이 구현은 스펙의 호출 형태를 옮긴 '초안'이며, 라이브 검증 후 사용한다.
+라이브 검증 결과(스모크 테스트, scripts/smoke_upstage.py):
+  - solar-pro2 / solar-mini / solar-embedding-1-large(dim 4096) 가용 ✅
+  - with_structured_output(dict) 는 스키마에 top-level "title" 필요 → prompts.py 반영 ✅
+  - Upstage groundedness-check 전용 모델은 폐기됨 → LLM-as-Judge(solar-mini)로 대체 ✅
 """
 
 from __future__ import annotations
@@ -17,6 +17,8 @@ from app.data.seed import Listing
 from app.prompts import (
     EXTRACT_SCHEMA,
     EXTRACT_SYSTEM,
+    GROUNDEDNESS_SCHEMA,
+    GROUNDEDNESS_SYSTEM,
     INTENT_SCHEMA,
     INTENT_SYSTEM,
     SCORE_SCHEMA,
@@ -25,8 +27,6 @@ from app.prompts import (
 from app.providers.base import Provider
 from app.scoring import match_geo
 from app.state import ConditionCard, MatchResult
-
-_GROUNDEDNESS_URL = "https://api.upstage.ai/v1/solar/chat/completions"  # ⚠️ docs 확인
 
 
 class UpstageProvider(Provider):
@@ -88,23 +88,17 @@ class UpstageProvider(Provider):
         return breakdown, out.get("tradeoff")
 
     def check_grounded(self, context: str, answer: str) -> str:
-        import httpx
-
+        # Upstage groundedness-check 전용 모델이 폐기되어 LLM-as-Judge로 판정(Practice09).
+        # solar-mini는 이 판정에서 신뢰도가 낮아(스모크 확인) 플래그십 solar-pro2를 쓴다.
         if not answer:
             return "notSure"
-        resp = httpx.post(
-            _GROUNDEDNESS_URL,
-            headers={"Authorization": f"Bearer {os.environ['UPSTAGE_API_KEY']}"},
-            json={
-                "model": "groundedness-check",
-                "messages": [
-                    {"role": "user", "content": context},
-                    {"role": "assistant", "content": answer},
-                ],
-            },
-            timeout=20,
+        out = self._llm_pro.with_structured_output(GROUNDEDNESS_SCHEMA).invoke(
+            [
+                {"role": "system", "content": GROUNDEDNESS_SYSTEM},
+                {"role": "user", "content": f"[context]\n{context}\n\n[answer]\n{answer}"},
+            ]
         )
-        return resp.json()["choices"][0]["message"]["content"]
+        return out.get("verdict", "notSure")
 
     def analyze_location(self, listing, cards, priority_order):
         # 입지 raw(geo/location) 를 카드 관점으로 번역. 데모는 시드 location 을 기반으로 LLM 보강.
