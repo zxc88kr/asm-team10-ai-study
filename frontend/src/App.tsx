@@ -1,31 +1,25 @@
-import Sidebar from './components/Sidebar'
-import ChatPanel from './components/ChatPanel'
-import RightPanels from './components/RightPanels'
-import LocationAnalysisView from './components/LocationAnalysisView'
-import AnalysisRightPanel from './components/AnalysisRightPanel'
-import Toast from './components/Toast'
-import useAppStore from './store/useAppStore'
+import { useEffect } from 'react'
+import LiveSidebar from './components/live/LiveSidebar'
+import LiveChat from './components/live/LiveChat'
+import LiveConditions from './components/live/LiveConditions'
+import LiveRecommendations from './components/live/LiveRecommendations'
+import useLiveStore from './store/useLiveStore'
 
 export default function App() {
-  const activeView = useAppStore(s => s.activeView)
+  const init = useLiveStore(s => s.init)
+
+  useEffect(() => {
+    void init()
+  }, [init])
 
   return (
-    <>
-      <div className="app">
-        <Sidebar />
-        {activeView === 'chat' ? (
-          <>
-            <ChatPanel />
-            <RightPanels />
-          </>
-        ) : (
-          <>
-            <LocationAnalysisView />
-            <AnalysisRightPanel />
-          </>
-        )}
+    <div className="app">
+      <LiveSidebar />
+      <LiveChat />
+      <div className="panels">
+        <LiveConditions />
+        <LiveRecommendations />
       </div>
-      <Toast />
-    </>
+    </div>
   )
 }
