@@ -13,8 +13,10 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
+from app.config import load_dotenv
 from app.runtime import new_session, run_turn
 
+load_dotenv()  # .env 의 ROOMPILOT_PROVIDER / UPSTAGE_API_KEY 로드
 app = FastAPI(title="RoomPilot Backend", version="0.1.0")
 
 

@@ -8,9 +8,12 @@ from app.state import AgentState
 
 def ingest_node(state: AgentState) -> dict:
     last = state["messages"][-1].content
-    out = get_provider().classify_intent(last, state.get("stage", "needs"))
-    update: dict = {"intent": out["intent"]}
-    if out["intent"] == "edit_condition" and out.get("edit"):
+    stage = state.get("stage", "needs")
+    out = get_provider().classify_intent(last, stage)
+    # 니즈 단계에선 분류 결과와 무관하게 정보 수집으로 고정(provider 간 동작 일치).
+    intent = "provide_info" if stage == "needs" else out["intent"]
+    update: dict = {"intent": intent}
+    if intent == "edit_condition" and out.get("edit"):
         # 루프백: 재추천 전에 직전 결과를 stash(델타 계산용)
         ranked = state.get("ranked") or []
         update["prev_candidate_count"] = state.get("candidate_count", 0)
@@ -27,9 +30,9 @@ def route_from_ingest(state: AgentState) -> str:
         return "filter"  # 루프백: 재추천
     if intent in ("select_listing", "ask_location"):
         return "location"
-    if intent in ("ask_listing", "chitchat"):
-        return "respond"
-    return "extract"  # provide_info 등
+    # 니즈 단계 이후엔 분류가 불확실해도 재추출하지 않고 응답으로 안전하게 흘린다
+    # (실 LLM 오분류로 prioritize 재진입하는 문제 방지). 니즈 단계는 위에서 이미 extract 처리.
+    return "respond"
 
 
 def apply_condition_edit(hard: dict, edit: dict) -> dict:

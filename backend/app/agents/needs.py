@@ -58,13 +58,22 @@ def prioritize_node(state: AgentState) -> dict:
     soft_cats = sorted({c.category for c in state.get("cards", []) if c.kind == "soft"})
     order = interrupt({"type": "edit_priority", "categories": soft_cats})  # ⏸ FE 편집 UI
 
-    # resume: 사용자가 정렬한 순서로 가중치 부여 (1순위=3 …)
-    chosen = order["order"]
+    # resume: 사용자가 정렬한 순서로 가중치 부여 (1순위=3 …). 페이로드 형태에 방어적.
+    chosen = _coerce_order(order, soft_cats)
     weights = {cat: max(3 - idx, 1) for idx, cat in enumerate(chosen)}
     cards = [
         _reweight(c, weights.get(c.category, c.weight)) for c in state.get("cards", [])
     ]
     return {"priority_order": chosen, "cards": cards, "stage": "listings"}
+
+
+def _coerce_order(order, soft_cats: list[str]) -> list[str]:
+    """resume 페이로드를 우선순위 리스트로 정규화. {"order":[...]} / [...] / 그 외 → 기본값."""
+    if isinstance(order, dict):
+        return order.get("order") or soft_cats
+    if isinstance(order, list):
+        return order
+    return soft_cats
 
 
 def _reweight(card: ConditionCard, weight: int) -> ConditionCard:

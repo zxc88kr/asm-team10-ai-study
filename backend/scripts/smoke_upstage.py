@@ -30,6 +30,8 @@ sys.path.insert(0, str(_ROOT))
 
 PRO_CANDIDATES = ["solar-pro2", "solar-pro", "solar-pro3"]
 MINI_CANDIDATES = ["solar-mini", "solar-1-mini-chat"]
+from app.config import load_dotenv  # noqa: E402
+
 _results: list[tuple[str, bool, str]] = []
 
 
@@ -37,18 +39,6 @@ def _record(name: str, ok: bool, detail: str = "") -> None:
     mark = "✅ PASS" if ok else "❌ FAIL"
     print(f"  {mark}  {name}" + (f"  — {detail}" if detail else ""))
     _results.append((name, ok, detail))
-
-
-def load_dotenv() -> None:
-    env = _ROOT / ".env"
-    if not env.exists():
-        return
-    for line in env.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, _, value = line.partition("=")
-        os.environ.setdefault(key.strip(), value.strip())
 
 
 def probe_chat() -> str | None:
