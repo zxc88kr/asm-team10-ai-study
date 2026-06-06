@@ -1,146 +1,118 @@
-# HANDOFF — RoomPilot (소마 10조) 세션 인수인계
+# HANDOFF — RoomPilot (소마 10조)
 
-> 마지막 작업일: 2026-05-30
-> 다음 세션에서 이 파일만 읽으면 바로 이어갈 수 있도록 정리한 문서.
+> 갱신: 2026-06-06 · 다음 세션은 이 파일만 읽으면 바로 이어갈 수 있음.
 
----
+## 한 줄 요약
 
-## 0. 한 줄 요약
+첫 독립 청년의 *말로 표현 못 한 생활 니즈*를 LLM이 집 조건으로 **번역·발굴**해 근거와 함께
+매물을 추천하는 3-에이전트. 부산대·장전동 시드. **LangGraph 백엔드 + 라이브 SSE 프론트엔드 +
+Upstage Solar 실 LLM** 연동 완료. 이번 세션에서 **웹 전면 리디자인(랜딩+워크스페이스) · 지도(Leaflet)
+· 매물 상세/액션 · 입지추천을 OSM 공공데이터(Nominatim/Overpass/OSRM) 실측으로 전환**까지 완료.
 
-**RoomPilot** — 첫 독립 청년의 *말로 표현 못 한 생활 니즈*를 LLM이 집 조건으로 **번역·발굴**해 근거와 함께 매물을 추천하는 멀티 에이전트. 기존 부동산의 **태그 검색 → LLM 의미 이해 추천**으로의 전환이 핵심 차별점.
+## 현재 상태
 
-이번 세션에서 한 일: **브레인스토밍 → 기획서(docx) 작성 → 시각자료 3종 → 정적 프로토타입(GitHub Pages) 구축 → 배포(소유자 토글 1개 남음)**.
+- 브랜치: `feat/backend-langgraph-skeleton` (전부 미커밋 — 논리 단위 커밋 + PR 대기)
+- **백엔드 4게이트 통과**: ruff / mypy(38파일) / pytest(29) / compileall
+- **프론트 4게이트 통과**: eslint(에러 0, Toast.tsx 경고 1은 기존 잔존) / tsc / vitest(43) / build
+- 로컬 실행 중(데모 가능): FE `:5173`, BE `:8000`(provider=upstage)
+- 직전 작업: **입지추천 실 공공데이터 전환** — 시드의 "가정값" 입지 수치를 OSM 실측으로 교체.
+  데모 시나리오(Scene 5) 루프백 칩, 출처 배지, 주변 인프라 실측 카운트 UI 추가.
 
----
+### 이번 세션에 한 것 (요약)
+1. **UI 전면 리디자인**: 대화 시작 전 **랜딩 히어로**(LiveLanding) ↔ 시작 후 **워크스페이스**(채팅+인사이트) 분기.
+   디자인 시스템(index.css) 정돈.
+2. **지도**: Leaflet + OpenStreetMap(키 불필요). 캠퍼스+매물 마커, 순위 핀, 선택 강조(LiveMap).
+3. **매물 상세 모달**(LiveListingModal): 가격/옵션/통학 동선/야간 안전/편의/장단점/AI코멘트 + 포커스 지도.
+   액션: **찜(localStorage 영속)·AI 입지 분석(실 백엔드)·공유(navigator.share/클립보드)·길찾기(OSM)**.
+4. **헤더 제목 클릭 → 홈(랜딩) 복귀**(reset). 스테퍼/랜딩 기능카드도 클릭 동작(섹션 스크롤/예시 채우기).
+5. **입지 실데이터화**: `app/services/osm.py` + `scripts/enrich_listings.py` → `app/data/geo_cache.json`.
+   seed 로더가 캐시 병합 → 통학 도보(OSRM)·주변 편의/안전(Overpass)이 실측값.
+6. **WSL HMR 자동반영**: vite `server.watch.usePolling`(=/mnt 드라이브 inotify 미지원 우회).
 
-## 1. 확정된 기획 의사결정 (브레인스토밍 결과)
+## 아키텍처
 
-- **차별화 핵심:** 라이프스타일 → 집 조건 **번역/발굴** ("내가 몰랐던 내 조건을 찾아준다")
-- **데모 페르소나:** 상경한 지방 **대학 신입생**(김민지). 저예산·학교근처·안전·첫 자취
-- **인터랙션 척추:** **A(자라나는 조건 카드)** + **C(숨은 니즈 발굴 질문)** 결합
-- **에이전트 3종:** ① 니즈 통역사(A+C) → ② 매물 큐레이터(의미 매칭·점수) → ③ 입지 해설사(맥락 해석), + **루프백**(카드 수정 시 2·3 재실행)
-- **공용 인터페이스:** `니즈 프로파일` = 하드 제약(예산 등) + 소프트 카드(중요도 가중치) → 트레이드오프 가능 추천
-- **LLM 구동(실제 목표):** 절충 — 오케스트레이션·툴은 로컬, LLM 추론만 API(Claude)
-- **매물 데이터(실제 목표):** LLM으로 가상 매물 생성 + 사람 검수
-- **UI:** 3-패널 (좌 워크플로우 스텝 / 중앙 AI 채팅 / 우 조건요약·추천TOP3·입지) — 참고 UI 이미지 반영
-
----
-
-## 2. 산출물 위치
-
-### 기획 문서 (작업 루트: `/mnt/c/dev/2026 soma_ai_home/`)
-- `[10조]프로젝트 기획서_RoomPilot.docx` — **제출용 기획서** (양식 5섹션 + 차별점표 + 그림 3개 삽입)
-- `[10조]프로젝트 기획서 양식_(10조)_(주제).docx` — 원본 빈 템플릿 (손대지 않음)
-- `docs/superpowers/specs/2026-05-30-roompilot-design.md` — 설계 문서(상세)
-- `docs/images/{architecture,flowchart,ui_mockup}.png` — 시각자료 3종
-- `build_proposal.py` — 기획서 docx 재생성 스크립트
-- `build_images.py` — 이미지 3종 재생성 스크립트 (Malgun Gothic 사용)
-
-### 프로토타입 (git 레포: `asm-team10-ai-study/`)
-- `index.html` — 3-패널 셸
-- `assets/css/styles.css` — 스타일
-- `assets/js/data.js` — **시드 매물 6건 + 시나리오 + 조건 카드 정의** (여기가 데이터/로직의 핵심)
-- `assets/js/app.js` — 인터뷰 흐름·의미 매칭·입지·루프백·모달
-- `.github/workflows/deploy-pages.yml` — Pages 배포 워크플로
-- `README.md` — 프로젝트 소개·실행법
-
----
-
-## 3. ⚠️ 프로토타입은 "목 데이터 + 규칙 기반"임 (실제 LLM 미연결)
-
-GitHub Pages는 정적 호스팅이라 백엔드/LLM 실행 불가 → **에이전트 흐름을 재현한 프런트엔드 데모**.
-
-| 에이전트 | 지금 상태 | 코드 위치 |
-|---|---|---|
-| Agent 1 (니즈 통역사) | 대화·질문·생성 카드가 **스크립트(대본)** | `data.js`의 `SCENARIO` |
-| Agent 2 (매물 큐레이터) | 설명 텍스트 **키워드 스캔** 규칙 매칭, 매물은 시드 6건 | `data.js`의 `CONDITION_CARDS[].match()`, `LISTINGS` |
-| Agent 3 (입지 해설사) | 매물 필드로 **공식 계산** (지도 API 없음) | `app.js`의 `renderLocation()` |
-
-→ 사용자가 자유 문장을 치면 진짜 이해하는 게 아니라, **추천 답변 칩**을 누르는 시나리오로 동작.
-
----
-
-## 4. 배포 현황 & 막힌 지점 (중요)
-
-- **레포:** https://github.com/zxc88kr/asm-team10-ai-study (owner: **zxc88kr**, public)
-- **브랜치:** `main`, `proto/05.30` — 둘 다 최신 커밋 `55c0a07`
-- **커밋 이력:** `d2effd5`(프로토타입) → `3f1efc2`(워크플로 enablement 제거) → `55c0a07`(모달 hidden 버그 수정)
-- **Pages URL(활성화 후):** **https://zxc88kr.github.io/asm-team10-ai-study/**
-
-### 🔴 남은 단 하나: 소유자가 Pages 토글을 켜야 함
-- 현재 git 인증 계정은 **`sionhyeop`** (이 레포 권한 `admin:false, push:true`).
-  → push는 되지만 **Pages 활성화·설정 변경 API는 403/404**. admin이 아니라서 막힘.
-- **소유자 `zxc88kr` 계정으로** 아래를 1회 수행하면 즉시 배포됨:
-  1. 레포 → **Settings** → 좌측 **Pages**
-  2. **Build and deployment → Source: `Deploy from a branch`**
-  3. Branch **`main`** / 폴더 **`/ (root)`** → **Save**
-  4. 1~2분 후 위 Pages URL 접속
-- (대안) 소유자가 `sionhyeop`을 **Admin**으로 승격하거나 zxc88kr 토큰을 git에 인증해주면, 다음 세션에서 **API로 활성화까지 자동 처리 가능.**
-- Actions 워크플로 방식을 쓰려면 Source에서 `GitHub Actions` 선택 (그러면 push마다 자동 배포). 단 `Deploy from a branch`가 더 단순.
-
----
-
-## 5. 로컬 실행 / 미리보기
-
-```bash
-cd "/mnt/c/dev/2026 soma_ai_home/asm-team10-ai-study"
-python3 -m http.server 8000
-# 브라우저: http://localhost:8000   (localhost 거부 시 WSL IP: http://<wsl-ip>:8000)
 ```
-- WSL IP 확인: `hostname -I | awk '{print $1}'` (이전 세션 값 172.29.233.125 — 재부팅 시 바뀔 수 있음)
-- 서버는 세션이 살아있는 동안만 동작.
+provider 추상화: Provider(ABC) ─ MockProvider(오프라인 결정적) / UpstageProvider(실 Solar)
+                 선택: ROOMPILOT_PROVIDER=mock|upstage  (키 없으면 mock 우회)
 
-### 검증 방법 (헤드리스)
-- Chromium은 WSL 시스템 라이브러리 부족으로 실행 불가 → **jsdom**으로 흐름 검증함.
-- 검증 스크립트 위치: `/tmp/uitest/test.mjs` (jsdom 설치됨). 전 흐름 통과(런타임 에러 0).
-  *(재실행: `cd /tmp/uitest && node test.mjs`)*
+LangGraph StateGraph (app/agents/)
+  router(ingest/route) → needs(extract/discover/prioritize, HITL interrupt())
+                       → curator(filter/embed_rank/score/ground_check)
+                       → location → respond
+  state.py: AgentState(TypedDict), merge_cards 리듀서, differentiation_ratio,
+            MemorySaver(JsonPlusSerializer allowlist)
 
----
+입지 공공데이터 enrich (신규):
+  scripts/enrich_listings.py → app/services/osm.py
+    Nominatim(지오코딩) · Overpass(주변 POI 실측) · OSRM(도보 통학 실측)
+    → app/data/geo_cache.json (좌표 주변 실측, ODbL)
+  app/data/seed.py: 로드 시 geo_cache 병합 → geo(통학/역 도보분)·location(해설) 실데이터로 대체
+    ※ 캐시는 시드 점수화에도 영향 → 시나리오 테스트는 실데이터 결과 기준으로 갱신됨
 
-## 6. 다음에 할 일 (우선순위 후보)
-
-1. **🔴 Pages 활성화** — 소유자 토글 (4번 참고). 끝나면 URL 정상 확인.
-2. **실제 에이전트 백엔드 연결** (원래 목표 "로컬 Agentic Workflow 데모"):
-   - FastAPI + **LangGraph**(Agent 1·2·3 + 사용자 승인 노드 + 루프백) + **Claude API** 추론
-   - 자유 문장 → 진짜 조건 추출/발굴/의미매칭. 키는 서버 환경변수.
-   - 프런트는 현재 UI 재사용, 데이터/매칭만 API 호출로 교체 (`data.js`/`app.js`의 목 부분 대체)
-3. **기획서 docx 최종 검토** — 색감/문구/분량, 학교명 `○○대` placeholder를 특정 대학으로 고정 권장.
-4. (선택) 시드 매물 확장, 입지에 실제 지도/공공데이터 API 부분 연결.
-
----
-
-## 7. 환경 메모 (다음 세션 빠른 시작용)
-
-- 작업 루트: `/mnt/c/dev/2026 soma_ai_home/` (경로에 공백 있음 — 따옴표 필수)
-- **git 인증:** Windows Git Credential Manager 사용 (`credential.helper` = `/mnt/c/Program Files/Git/mingw64/bin/git-credential-manager.exe`). push 무인증 동작 확인됨.
-- **`gh` CLI 없음.** GitHub 작업은 REST API(curl) + git으로 처리.
-- **`uv` 있음** (`~/.local/bin/uv`) — python 패키지: `uv run --with python-docx python3 build_proposal.py`, `uv run --with matplotlib python3 build_images.py`
-- **node 22 / npm 10** 있음. python3 있음(pip/ensurepip 없음 → uv 사용).
-- 한글 폰트: `/mnt/c/Windows/Fonts/malgun.ttf` (matplotlib 다이어그램용)
-
-### 자주 쓰는 명령
-```bash
-# 기획서/이미지 재생성
-cd "/mnt/c/dev/2026 soma_ai_home"
-~/.local/bin/uv run --with matplotlib python3 build_images.py
-~/.local/bin/uv run --with python-docx python3 build_proposal.py
-
-# 프로토타입 푸시 (proto/05.30 작업 → main 동기화)
-cd "/mnt/c/dev/2026 soma_ai_home/asm-team10-ai-study"
-git add -A && git commit -m "..."
-git branch -f main HEAD
-git push origin proto/05.30
-git push origin proto/05.30:main   # main 푸시가 Pages 워크플로 트리거
-
-# 현재 사용자 레포 권한 확인 (admin 여부)
-TOKEN=$(printf 'protocol=https\nhost=github.com\n\n' | git credential fill 2>/dev/null | sed -n 's/^password=//p')
-curl -s -H "Authorization: Bearer $TOKEN" https://api.github.com/repos/zxc88kr/asm-team10-ai-study | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>console.log(JSON.parse(d).permissions))"
+프론트(라이브):
+  App: started(=user 발화 유무)로 LiveLanding ↔ 워크스페이스 분기, detailId로 모달 제어
+  store/useLiveStore: SSE 이벤트 리듀서 + favorites(localStorage) + analyzeListing(=select_listing 발화)
 ```
 
----
+## 핵심 파일
 
-## 8. 핵심 링크 모음
+| 영역 | 파일 |
+|---|---|
+| 프롬프트/스키마 | `backend/app/prompts.py` — 모든 스키마 top-level `title` 필수 |
+| 실 LLM | `backend/app/providers/upstage.py` · Mock `mock.py` (둘 다 analyze_location은 location.dataSource 보존) |
+| 상태/리듀서 | `backend/app/state.py` · 점수/매칭 `scoring.py` |
+| 에이전트 | `backend/app/agents/{router,needs,curator,location,respond}.py` |
+| **입지 공공데이터** | `backend/app/services/osm.py` (Nominatim/Overpass/OSRM, 순수 파서+네트워크 분리) |
+| **enrich 스크립트/캐시** | `backend/scripts/enrich_listings.py` → `backend/app/data/geo_cache.json` |
+| 시드 로더 | `backend/app/data/seed.py` (geo_cache 병합) · 시드 `data/listings.json`(geo.lat/lng 포함) |
+| API | `backend/app/main.py` — CORS, /session, /message(SSE), /resume(SSE), /listings, /health |
+| FE 진입/분기 | `frontend/src/App.tsx` · `main.tsx`(leaflet css import) |
+| FE API/타입 | `frontend/src/api/{client,types}.ts` (SSE=fetch+ReadableStream) |
+| FE 스토어 | `frontend/src/store/useLiveStore.ts` (favorites·analyzeListing 추가) |
+| FE 컴포넌트 | `frontend/src/components/live/{LiveTopBar,LiveLanding,LiveChat,LiveMetric,LiveConditions,LiveRecommendations,LiveMap,LiveListingModal}.tsx` |
+| 디자인 시스템 | `frontend/src/index.css` |
+
+## 실행
+
+```bash
+# 백엔드 (실 LLM): backend/.env 에 UPSTAGE_API_KEY (gitignored, 절대 커밋 금지)
+cd backend && ROOMPILOT_PROVIDER=upstage uvicorn app.main:app --port 8000
+# 입지 공공데이터 재수집(네트워크 필요, 4건 ~30초): geo_cache.json 갱신
+cd backend && PYTHONPATH=. python3 scripts/enrich_listings.py
+# 백엔드 4게이트 (도구는 ~/.local/bin)
+python3 -m ruff check . && python3 -m mypy && python3 -m pytest -q && python3 -m compileall -q app tests demo.py chat.py scripts
+# 프론트엔드 (WSL polling 적용됨 → 저장 시 자동 HMR)
+cd frontend && npm run dev   # :5173, base=/asm-team10-ai-study/
+# 프론트 4게이트
+npm run lint && npx tsc --noEmit && npm run test && npm run build
+# leaflet 설치는 --legacy-peer-deps 필요(eslint-plugin-react 피어 충돌)
+```
+
+## 함정 (학습된 것 — 반복 금지)
+
+- `python` 없음 → **`python3`**. ruff/mypy/pytest 는 `~/.local/bin`
+- 서버는 **harness `run_in_background:true`** 로. `pkill -f uvicorn` 금지(셸 자살). 종료는 `ss -ltnp` 로 PID 찾아 kill
+- `with_structured_output(dict)` 는 스키마에 top-level `title` 필요
+- `.env` gitignored, API 키 echo/커밋 금지. **main 직접 push 금지** → feature 브랜치 → PR(항상 Reviewer가 생성)
+- **WSL `/mnt/e`는 inotify 미지원** → vite `server.watch.usePolling:true` 없으면 HMR 자동반영 안 됨
+- **httpx 헤더는 ASCII만** → User-Agent에 한글 넣으면 UnicodeEncodeError (osm.py 참고)
+- **Overpass 429 빈발** → 미러 순회 + 백오프 재시도(`_overpass_post`), 호출 간 sleep
+- **OSM 미수록 데이터(가로등 등)는 "없음/적음"으로 단정 금지** → "확인 필요"로 분기(환각 방지)
+- **geo_cache.json 은 점수화에도 영향** → 재수집 시 랭킹이 바뀔 수 있음. 시나리오 테스트는 캐시값 기준
+- npm install 은 **`--legacy-peer-deps`** (eslint-plugin-react vs eslint10 피어 충돌)
+- 핸드오프 파일: 디스크 `handoff.md` / git `HANDOFF.md` (드라이브 대소문자 무시 = 동일 파일)
+- frontend 컴포넌트 규칙: 300줄↑ 분리검토, store에 UI 로직 금지(`frontend/CLAUDE.md`)
+
+## 다음 할 일 (TODO)
+
+1. **[최우선] 미커밋 변경 논리 단위 커밋 → PR** (Reviewer 게이트 후). 변경량 큼:
+   - UI 리디자인 / 지도+상세모달 / 입지 공공데이터 / vite polling 등으로 분리 권장.
+2. (선택) **data.go.kr 공공데이터** 연동 — 국토부 전월세 실거래가 등. **서비스키 필요**(사용자 발급).
+   현재는 키 불필요한 OSM 스택만 사용 중.
+3. (선택) 입지 `aiComment`를 실측 facts 기반으로 **LLM 생성**(현재는 결정적 요약문).
+4. (선택) 매물 인벤토리·좌표를 실주소 기반으로 교체(현재 가격·좌표는 데모용, 좌표 *주변* 입지만 실데이터).
+
+## 링크
 
 - 레포: https://github.com/zxc88kr/asm-team10-ai-study
-- Pages(활성화 후): https://zxc88kr.github.io/asm-team10-ai-study/
-- 로컬: http://localhost:8000
+- FE 배포(main push 시 자동): https://zxc88kr.github.io/asm-team10-ai-study/
