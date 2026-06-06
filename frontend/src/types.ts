@@ -121,3 +121,46 @@ export interface ScenarioStep {
   aiText: string
   recommend?: boolean
 }
+
+export interface AgentConditions {
+  session_id: string
+  hard_conditions: {
+    location_transport: {
+      areas: string[]
+      landmarks: string[]
+      commute_time_max_minutes: number | null
+      transport_notes: string[]
+    }
+    monthly_rent: {
+      max_krw: number | null
+      max_manwon: number | null
+      includes_management_fee: boolean | null
+    }
+  }
+  soft_conditions: {
+    convenience_facilities: {
+      required: string[]
+      preferred: string[]
+      notes: string[]
+    }
+    pests: {
+      avoid: boolean | null
+      evidence: string[]
+    }
+    default_options: {
+      required: string[]
+      preferred: string[]
+    }
+    basement: {
+      avoid: boolean | null
+      evidence: string[]
+    }
+    mold: {
+      avoid: boolean | null
+      evidence: string[]
+    }
+    extra_notes: string[]
+  }
+  missing_required_conditions: string[]
+  next_question: string
+}
