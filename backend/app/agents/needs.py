@@ -1,0 +1,71 @@
+"""Agent 1 「니즈 통역사」 — extract / discover / prioritize. 오케스트레이션 §3."""
+
+from __future__ import annotations
+
+from langgraph.types import interrupt
+
+from app.blindspots import pick_blind_spot
+from app.events import emit
+from app.providers import get_provider
+from app.state import AgentState, ConditionCard, differentiation_ratio
+
+MAX_DISCOVER = 3  # 설문화 방지: 발굴 역질문 최대 횟수
+
+
+def extract_node(state: AgentState) -> dict:
+    last = state["messages"][-1].content
+    provider = get_provider()
+    new_cards, hard_updates = provider.extract(
+        last, state.get("cards", []), state.get("asked_dimensions", []), state.get("hard", {})
+    )
+    for c in new_cards:  # 카드 즉시 push (실시간 채움)
+        emit({"type": "card", "card": c.model_dump(by_alias=True)})
+
+    hard = dict(state.get("hard", {}))
+    hard.update(hard_updates)
+
+    ratio = differentiation_ratio(state.get("cards", []) + new_cards)
+    emit({"type": "metric", **ratio})  # FE 상단 1:6 배지
+    return {"cards": new_cards, "hard": hard}
+
+
+def route_after_extract(state: AgentState) -> str:
+    cards = state.get("cards", [])
+    has_soft = any(c.kind == "soft" for c in cards)
+    if not has_soft:
+        return "respond"  # 하드 카드만 → "하루 일과 들려주세요" 유도 후 턴 종료
+    if len(state.get("asked_dimensions", [])) < MAX_DISCOVER and pick_blind_spot(state):
+        return "discover"
+    return "prioritize"  # 사각지대 소진 → 우선순위 편집
+
+
+def discover_node(state: AgentState) -> dict:
+    blind = pick_blind_spot(state)
+    cat, desc = blind  # route_after_extract가 None이 아님을 보장
+    question = get_provider().discover_question(cat, desc, state.get("cards", []))
+
+    # ⏸ 여기서 멈춘다. interrupt 앞에 부수효과를 두지 않는다(재개 시 재실행됨).
+    answer = interrupt({"type": "discover_question", "category": cat, "text": question})
+
+    # resume 후: 사용자의 답을 메시지에 싣고 asked에 기록 → extract가 카드화
+    return {
+        "messages": [{"role": "user", "content": answer}],
+        "asked_dimensions": state.get("asked_dimensions", []) + [cat],
+    }
+
+
+def prioritize_node(state: AgentState) -> dict:
+    soft_cats = sorted({c.category for c in state.get("cards", []) if c.kind == "soft"})
+    order = interrupt({"type": "edit_priority", "categories": soft_cats})  # ⏸ FE 편집 UI
+
+    # resume: 사용자가 정렬한 순서로 가중치 부여 (1순위=3 …)
+    chosen = order["order"]
+    weights = {cat: max(3 - idx, 1) for idx, cat in enumerate(chosen)}
+    cards = [
+        _reweight(c, weights.get(c.category, c.weight)) for c in state.get("cards", [])
+    ]
+    return {"priority_order": chosen, "cards": cards, "stage": "listings"}
+
+
+def _reweight(card: ConditionCard, weight: int) -> ConditionCard:
+    return card.model_copy(update={"weight": weight})

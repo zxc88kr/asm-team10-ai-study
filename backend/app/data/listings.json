@@ -1,0 +1,179 @@
+[
+  {
+    "id": "A",
+    "name": "A빌라",
+    "type": "원룸",
+    "area": "장전동",
+    "deposit": 1000,
+    "rent": 50,
+    "mgmt_fee": 5,
+    "pyeong": 8,
+    "floor": 3,
+    "options": ["분리형주방", "인덕션", "도어락", "무인택배함"],
+    "desc": "부산대역 도보 5분, 신축 분리형 원룸. 공동현관 도어락+무인택배함 완비. 남향이라 채광 좋고 환기 잘 됨. 주방 분리형, 인덕션 2구. 골목 초입 편의점·가로등 밝은 편.",
+    "geo": {
+      "subway": "부산대역",
+      "line": "1호선",
+      "station_walk_min": 5,
+      "campus_walk_min": 16,
+      "last_train_margin_min": 35,
+      "lit": true,
+      "main_road": false
+    },
+    "location": {
+      "commute": {
+        "legs": [
+          { "label": "집", "minutes": 5, "type": "walk" },
+          { "label": "부산대역 1호선", "minutes": 8, "type": "subway" },
+          { "label": "캠퍼스 정문", "minutes": 0, "type": "walk" }
+        ],
+        "totalMinutes": 16,
+        "transfers": 0,
+        "mainNote": "역과 캠퍼스가 가까운 동네라 셔틀 불필요"
+      },
+      "nightSafety": [
+        { "icon": "moon", "label": "밤 11시 귀가 기준 막차 여유 충분", "detail": "노포 종점 2정거장이라 막차가 늦음", "pass": true },
+        { "icon": "lightbulb", "label": "역→집 경로 가로등 밝음", "detail": "골목 초입 편의점·가로등", "pass": true },
+        { "icon": "shield", "label": "공동현관 도어락", "detail": "무인택배함 완비", "pass": true }
+      ],
+      "convenience": [
+        { "name": "편의점", "walkMin": 1, "icon": "shopping-bag" },
+        { "name": "마트", "walkMin": 6, "icon": "shopping-cart" }
+      ],
+      "pros": ["역 도보 5분, 막차 여유", "분리형 주방·남향 채광", "도어락+무인택배함"],
+      "cons": ["캠퍼스 정문까지 도보 16분"],
+      "aiComment": "안전·교통을 충분히 지키면서 요리·채광·택배까지 챙기는 균형형."
+    }
+  },
+  {
+    "id": "B",
+    "name": "B오피스텔",
+    "type": "오피스텔",
+    "area": "장전동",
+    "deposit": 1000,
+    "rent": 49,
+    "mgmt_fee": 5,
+    "pyeong": 7,
+    "floor": 6,
+    "options": ["풀옵션", "CCTV", "경비상주"],
+    "desc": "부산대역 도보 3분, 대로변 오피스텔. CCTV·경비 상주. 풀옵션. 개방형 주방. 건물 밀집 지역으로 채광은 다소 제한적.",
+    "geo": {
+      "subway": "부산대역",
+      "line": "1호선",
+      "station_walk_min": 3,
+      "campus_walk_min": 13,
+      "last_train_margin_min": 35,
+      "lit": true,
+      "main_road": true
+    },
+    "location": {
+      "commute": {
+        "legs": [
+          { "label": "집", "minutes": 3, "type": "walk" },
+          { "label": "부산대역 1호선", "minutes": 10, "type": "subway" },
+          { "label": "캠퍼스 정문", "minutes": 0, "type": "walk" }
+        ],
+        "totalMinutes": 13,
+        "transfers": 0,
+        "mainNote": "대로변이라 밤길 체감 안전 양호"
+      },
+      "nightSafety": [
+        { "icon": "moon", "label": "역 3분, 대로변 동선", "detail": "밤길 체감 안전 상위", "pass": true },
+        { "icon": "shield", "label": "CCTV·경비 상주", "detail": "건물 보안 양호", "pass": true }
+      ],
+      "convenience": [
+        { "name": "편의점", "walkMin": 1, "icon": "shopping-bag" }
+      ],
+      "pros": ["역 도보 3분, 대로변", "CCTV·경비 상주"],
+      "cons": ["개방형 주방(요리 냄새 분리 약함)", "채광 다소 제한적"],
+      "aiComment": "안전·교통은 최상이나 요리·채광에서 약점."
+    }
+  },
+  {
+    "id": "C",
+    "name": "C원룸",
+    "type": "원룸",
+    "area": "구서동",
+    "deposit": 500,
+    "rent": 42,
+    "mgmt_fee": 3,
+    "pyeong": 8,
+    "floor": 2,
+    "options": ["분리형주방"],
+    "desc": "보증금 500·월세 42로 저렴. 분리형 주방, 채광 좋음. 다만 부산대역까지 도보 12분, 일부 구간 가로등 적은 골목.",
+    "geo": {
+      "subway": "구서역",
+      "line": "1호선",
+      "station_walk_min": 12,
+      "campus_walk_min": 20,
+      "last_train_margin_min": 30,
+      "lit": false,
+      "main_road": false
+    },
+    "location": {
+      "commute": {
+        "legs": [
+          { "label": "집", "minutes": 12, "type": "walk" },
+          { "label": "구서역 1호선", "minutes": 8, "type": "subway" },
+          { "label": "캠퍼스 정문", "minutes": 0, "type": "walk" }
+        ],
+        "totalMinutes": 20,
+        "transfers": 0,
+        "mainNote": "부산대역 1정거장"
+      },
+      "nightSafety": [
+        { "icon": "lightbulb", "label": "일부 구간 가로등 적은 골목", "detail": "야간 귀가 시 주의", "pass": false }
+      ],
+      "convenience": [
+        { "name": "편의점", "walkMin": 3, "icon": "shopping-bag" }
+      ],
+      "pros": ["월세 42로 가장 저렴", "분리형 주방·채광 좋음"],
+      "cons": ["역까지 도보 12분", "일부 구간 가로등 적음(야간 안전 약점)"],
+      "aiComment": "비용·요리·채광은 좋지만 1순위 야간 안전에서 감점."
+    }
+  },
+  {
+    "id": "D",
+    "name": "D신축빌라",
+    "type": "원룸",
+    "area": "장전동",
+    "deposit": 1000,
+    "rent": 54,
+    "mgmt_fee": 6,
+    "pyeong": 9,
+    "floor": 4,
+    "options": ["엘리베이터", "분리형주방", "도어락", "무인택배함"],
+    "desc": "신축 빌라, 엘리베이터 완비. 공동현관 도어락+무인택배함, 남향 채광 좋고 환기 잘 됨. 부산대역 도보 6분. 주방 분리형. 골목에 편의점·가로등 있어 밤길 무난.",
+    "geo": {
+      "subway": "부산대역",
+      "line": "1호선",
+      "station_walk_min": 6,
+      "campus_walk_min": 14,
+      "last_train_margin_min": 35,
+      "lit": true,
+      "main_road": false
+    },
+    "location": {
+      "commute": {
+        "legs": [
+          { "label": "집", "minutes": 6, "type": "walk" },
+          { "label": "부산대역 1호선", "minutes": 8, "type": "subway" },
+          { "label": "캠퍼스 정문", "minutes": 0, "type": "walk" }
+        ],
+        "totalMinutes": 14,
+        "transfers": 0,
+        "mainNote": "신축+엘리베이터로 짐 옮기기 편리"
+      },
+      "nightSafety": [
+        { "icon": "moon", "label": "역 도보 6분, 밤길 무난", "detail": "골목 편의점·가로등", "pass": true },
+        { "icon": "shield", "label": "도어락+무인택배함", "detail": "신축 보안", "pass": true }
+      ],
+      "convenience": [
+        { "name": "편의점", "walkMin": 2, "icon": "shopping-bag" }
+      ],
+      "pros": ["신축이라 채광·습기 걱정 적음", "엘리베이터로 짐 옮기기 편리", "도어락+무인택배함"],
+      "cons": ["월 54로 기존 예산보다 비쌈"],
+      "aiComment": "+5만 투자 시 채광·짐 옮기기·쾌적함까지 챙기는 상위 매물."
+    }
+  }
+]

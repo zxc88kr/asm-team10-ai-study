@@ -1,0 +1,20 @@
+[project]
+name = "roompilot-backend"
+version = "0.1.0"
+description = "RoomPilot 3-agent LangGraph backend (민지 시나리오)"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B"]
+ignore = ["E501"]  # 한국어 주석/프롬프트는 길이 제한 예외
