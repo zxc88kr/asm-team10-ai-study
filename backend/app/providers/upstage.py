@@ -1,19 +1,23 @@
 """실제 Upstage Solar Provider (구현스펙 §1, §5~§7).
 
-langchain-upstage / httpx 는 이 모듈에서만 import 한다(필요 시 지연 로딩).
+langchain-upstage 는 이 모듈에서만 import 한다(필요 시 지연 로딩).
 설치·API 키 없이도 mock 경로는 동작하도록 클래스 import 시점에 SDK를 강제하지 않는다.
 
 라이브 검증 결과(스모크 테스트, scripts/smoke_upstage.py):
   - solar-pro2 / solar-mini / solar-embedding-1-large(dim 4096) 가용 ✅
   - with_structured_output(dict) 는 스키마에 top-level "title" 필요 → prompts.py 반영 ✅
-  - Upstage groundedness-check 전용 모델은 폐기됨 → LLM-as-Judge(solar-mini)로 대체 ✅
+  - Upstage groundedness-check 전용 모델은 폐기됨 → LLM-as-Judge(solar-pro2)로 대체 ✅
+
+실 LLM 방어(리뷰 반영): 구조화 출력 None/형식이탈, enum 이탈 값, list 형 content 를 모두 정규화.
 """
 
 from __future__ import annotations
 
 import os
+from typing import Any
 
 from app.data.seed import Listing
+from app.parsing import message_text, won_after
 from app.prompts import (
     EXTRACT_SCHEMA,
     EXTRACT_SYSTEM,
@@ -28,6 +32,15 @@ from app.providers.base import Provider
 from app.scoring import match_geo
 from app.state import ConditionCard, MatchResult
 
+VALID_CATEGORIES = {"area", "budget", "safety", "transit", "commute", "kitchen", "light", "security"}
+VALID_STATUS = {"full", "partial", "none"}
+VALID_VERDICT = {"grounded", "notGrounded", "notSure"}
+
+
+def _as_dict(out: Any) -> dict:
+    """구조화 출력이 None/비dict 로 와도 안전하게 dict 로 정규화."""
+    return out if isinstance(out, dict) else {}
+
 
 class UpstageProvider(Provider):
     name = "upstage"
@@ -37,15 +50,22 @@ class UpstageProvider(Provider):
 
         if not os.getenv("UPSTAGE_API_KEY"):
             raise RuntimeError("UPSTAGE_API_KEY 가 필요합니다 (ROOMPILOT_PROVIDER=mock 로 우회 가능).")
-        self._llm_pro = ChatUpstage(model=pro_model, temperature=0.2)
+        self._llm_pro = ChatUpstage(model=pro_model, temperature=0)
         self._llm_mini = ChatUpstage(model=mini_model, temperature=0)
         self._emb = UpstageEmbeddings(model="solar-embedding-1-large")
 
+    def _structured(self, model: Any, schema: dict, messages: list) -> dict:
+        return _as_dict(model.with_structured_output(schema).invoke(messages))
+
+    # ------------------------------------------------------------------ Agent 1
     def classify_intent(self, text: str, stage: str) -> dict:
-        out = self._llm_mini.with_structured_output(INTENT_SCHEMA).invoke(
-            [{"role": "system", "content": INTENT_SYSTEM}, {"role": "user", "content": text}]
+        out = self._structured(
+            self._llm_mini,
+            INTENT_SCHEMA,
+            [{"role": "system", "content": INTENT_SYSTEM}, {"role": "user", "content": text}],
         )
-        return {"intent": out.get("intent", "chitchat"), "edit": out.get("edit")}
+        intent = out.get("intent", "chitchat")
+        return {"intent": intent, "edit": out.get("edit")}
 
     def extract(
         self,
@@ -54,10 +74,16 @@ class UpstageProvider(Provider):
         asked_dimensions: list[str],
         hard: dict,
     ) -> tuple[list[ConditionCard], dict]:
-        out = self._llm_pro.with_structured_output(EXTRACT_SCHEMA).invoke(
-            [{"role": "system", "content": EXTRACT_SYSTEM}, {"role": "user", "content": text}]
+        out = self._structured(
+            self._llm_pro,
+            EXTRACT_SCHEMA,
+            [{"role": "system", "content": EXTRACT_SYSTEM}, {"role": "user", "content": text}],
         )
-        new = [self._to_card(c, asked_dimensions) for c in out.get("cards", [])]
+        new: list[ConditionCard] = []
+        for raw in out.get("cards", []):
+            card = self._to_card(raw, asked_dimensions)
+            if card is not None:
+                new.append(card)
         updates: dict = {}
         for c in new:
             if c.kind == "hard":
@@ -69,8 +95,9 @@ class UpstageProvider(Provider):
             f"사용자의 생활 맥락에서 '{desc}'({category}) 차원을 공감+근거 형태로 한 문장 역질문해라. "
             "설문처럼 묻지 말고 자연스럽게."
         )
-        return str(self._llm_pro.invoke([{"role": "user", "content": prompt}]).content)
+        return message_text(self._llm_pro.invoke([{"role": "user", "content": prompt}]).content)
 
+    # ------------------------------------------------------------------ Agent 2
     def embed(self, text: str) -> list[float]:
         return self._emb.embed_query(text)
 
@@ -78,51 +105,71 @@ class UpstageProvider(Provider):
         self, listing: Listing, cards: list[ConditionCard]
     ) -> tuple[list[MatchResult], str | None]:
         soft = [c for c in cards if c.kind == "soft"]
+        valid_ids = {c.id for c in soft}
         payload = {
             "desc": listing.desc,
             "cards": [{"id": c.id, "label": c.label, "category": c.category} for c in soft],
         }
-        out = self._llm_pro.with_structured_output(SCORE_SCHEMA).invoke(
+        out = self._structured(
+            self._llm_pro,
+            SCORE_SCHEMA,
             [
                 {"role": "system", "content": SCORE_SYSTEM},
                 {"role": "user", "content": str(payload)},
-            ]
+            ],
         )
-        breakdown = [
-            MatchResult(card_id=b["card_id"], status=b["status"], evidence=b.get("evidence", ""))
-            for b in out.get("breakdown", [])
-        ]
+        breakdown: list[MatchResult] = []
+        for b in out.get("breakdown", []):
+            cid = b.get("card_id")
+            if cid not in valid_ids:
+                continue
+            status = b.get("status")
+            breakdown.append(
+                MatchResult(
+                    card_id=cid,
+                    status=status if status in VALID_STATUS else "none",
+                    evidence=b.get("evidence", "") or "",
+                )
+            )
         self._fill_geo(listing, soft, breakdown)
         return breakdown, out.get("tradeoff")
 
     def check_grounded(self, context: str, answer: str) -> str:
-        # Upstage groundedness-check 전용 모델이 폐기되어 LLM-as-Judge로 판정(Practice09).
-        # solar-mini는 이 판정에서 신뢰도가 낮아(스모크 확인) 플래그십 solar-pro2를 쓴다.
+        # Upstage groundedness-check 전용 모델 폐기 → LLM-as-Judge(solar-pro2, Practice09).
         if not answer:
             return "notSure"
-        out = self._llm_pro.with_structured_output(GROUNDEDNESS_SCHEMA).invoke(
+        out = self._structured(
+            self._llm_pro,
+            GROUNDEDNESS_SCHEMA,
             [
                 {"role": "system", "content": GROUNDEDNESS_SYSTEM},
                 {"role": "user", "content": f"[context]\n{context}\n\n[answer]\n{answer}"},
-            ]
+            ],
         )
-        return out.get("verdict", "notSure")
+        verdict = out.get("verdict")
+        return verdict if verdict in VALID_VERDICT else "notSure"
 
+    # ------------------------------------------------------------------ Agent 3
     def analyze_location(
         self, listing: Listing, cards: list[ConditionCard], priority_order: list[str]
     ) -> dict:
         # 입지 raw(geo/location) 를 카드 관점으로 번역. 데모는 시드 location 을 기반으로 LLM 보강.
         return {**listing.location, "dataSource": "seed"}
 
-    def _to_card(self, c: dict, asked: list[str]) -> ConditionCard:
-        source = c.get("source", "extracted")
-        if asked and source != "said" and c.get("category") == (asked[-1] if asked else None):
+    # ------------------------------------------------------------- internals
+    def _to_card(self, c: dict, asked: list[str]) -> ConditionCard | None:
+        category = c.get("category")
+        if category not in VALID_CATEGORIES:
+            return None  # enum 이탈 카드는 버린다(환각/잡음 차단)
+        kind = c.get("kind") if c.get("kind") in ("hard", "soft") else "soft"
+        source = c.get("source") if c.get("source") in ("said", "extracted") else "extracted"
+        if asked and source != "said" and category == asked[-1]:
             source = "discovered"
         return ConditionCard(
-            id=f"c_{c['category']}",
-            label=c["label"],
-            category=c["category"],
-            kind=c.get("kind", "soft"),
+            id=f"c_{category}",
+            label=c.get("label", category),
+            category=category,
+            kind=kind,
             source=source,
             reason=c.get("reason", ""),
         )
@@ -141,14 +188,19 @@ class UpstageProvider(Provider):
 
 
 def _card_to_hard(card: ConditionCard, text: str) -> dict:
-    import re
-
+    """하드 카드 → 제약 dict. 위치 기반 nums[0]/nums[1] 대신 라벨 기반 파싱."""
     if card.category == "area":
         return {"area": "부산대"}
     if card.category == "budget":
         out: dict = {}
-        nums = re.findall(r"\d+", text)
-        if len(nums) >= 2:
-            out["deposit"], out["rent"] = int(nums[0]), int(nums[1])
+        dep = won_after(text, ["보증금"])
+        rent = won_after(text, ["월세"])
+        mgmt = won_after(text, ["관리비"])
+        if dep is not None:
+            out["deposit"] = dep
+        if rent is not None:
+            out["rent"] = rent
+        if mgmt is not None:
+            out["mgmt_fee_max"] = mgmt
         return out
     return {}

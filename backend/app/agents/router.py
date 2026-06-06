@@ -5,21 +5,37 @@ from __future__ import annotations
 from app.providers import get_provider
 from app.state import AgentState
 
+_EDIT_FIELDS = {"rent", "deposit", "commute_max", "area", "mgmt_fee_max"}
+
 
 def ingest_node(state: AgentState) -> dict:
     last = state["messages"][-1].content
     stage = state.get("stage", "needs")
     out = get_provider().classify_intent(last, stage)
     # 니즈 단계에선 분류 결과와 무관하게 정보 수집으로 고정(provider 간 동작 일치).
-    intent = "provide_info" if stage == "needs" else out["intent"]
+    intent = "provide_info" if stage == "needs" else out.get("intent", "chitchat")
     update: dict = {"intent": intent}
-    if intent == "edit_condition" and out.get("edit"):
-        # 루프백: 재추천 전에 직전 결과를 stash(델타 계산용)
-        ranked = state.get("ranked") or []
-        update["prev_candidate_count"] = state.get("candidate_count", 0)
-        update["prev_top_id"] = ranked[0].listing_id if ranked else None
-        update["hard"] = apply_condition_edit(dict(state.get("hard", {})), out["edit"])
+    edited = _maybe_apply_edit(state, intent, out.get("edit"))
+    if edited is not None:
+        update.update(edited)
+    else:
+        update["intent"] = "chitchat" if intent == "edit_condition" else intent
     return update
+
+
+def _maybe_apply_edit(state: AgentState, intent: str, edit: object) -> dict | None:
+    """유효한 edit면 hard 갱신 + 델타용 stash 반환, 아니면 None(편집 무시)."""
+    if intent != "edit_condition" or not isinstance(edit, dict):
+        return None
+    field = edit.get("field")
+    if field not in _EDIT_FIELDS:
+        return None
+    ranked = state.get("ranked") or []
+    return {
+        "prev_candidate_count": state.get("candidate_count", 0),
+        "prev_top_id": ranked[0].listing_id if ranked else None,
+        "hard": apply_condition_edit(dict(state.get("hard", {})), edit),
+    }
 
 
 def route_from_ingest(state: AgentState) -> str:
@@ -36,7 +52,7 @@ def route_from_ingest(state: AgentState) -> str:
 
 
 def apply_condition_edit(hard: dict, edit: dict) -> dict:
-    field, op, value = edit["field"], edit["op"], edit.get("value", 0)
+    field, op, value = edit["field"], edit.get("op", "set"), edit.get("value", 0)
     if field == "area":
         hard[field] = value
     elif op == "set":

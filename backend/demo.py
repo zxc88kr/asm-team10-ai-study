@@ -47,7 +47,7 @@ def auto_resume(question: dict) -> dict | str:
     return _DISCOVER_ANSWERS.get(category, "네, 그것도 중요해요.")
 
 
-def _print(result: dict) -> None:
+def print_events(result: dict) -> None:
     for e in result["events"]:
         t = e.get("type")
         if t == "card":
@@ -76,7 +76,7 @@ def run_utterance(sid: str, label: str, text: str) -> None:
     print(f"\n=== {label} ===")
     print(f"   👤 {text}")
     result = drive(sid, text)
-    _print(result)
+    print_events(result)
     guard = 0
     while result.get("pending") and guard < 8:  # interrupt 적응 루프(무한루프 방지)
         guard += 1
@@ -86,7 +86,7 @@ def run_utterance(sid: str, label: str, text: str) -> None:
         payload = auto_resume(question)
         print(f"   ▶ resume: {payload}")
         result = drive(sid, resume=payload)
-        _print(result)
+        print_events(result)
 
 
 def main() -> None:

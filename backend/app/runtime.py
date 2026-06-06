@@ -29,10 +29,6 @@ def _is_fresh(config: dict) -> bool:
     return not GRAPH.get_state(config).values
 
 
-def has_pending_interrupt(session_id: str) -> bool:
-    return bool(GRAPH.get_state(_config(session_id)).next)
-
-
 def _build_input(config: dict, user_text: str | None, resume: Any) -> Command | dict[str, Any]:
     if resume is not None and bool(GRAPH.get_state(config).next):
         return Command(resume=resume)

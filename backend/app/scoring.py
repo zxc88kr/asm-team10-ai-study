@@ -44,15 +44,18 @@ def match_geo(category: str, walk_min: int) -> MatchStatus:
     return "none"
 
 
+def priority_weights(priority_order: list[str]) -> dict[str, int]:
+    """우선순위 순서 → 카테고리 가중치 (1순위=3, 2순위=2, 3순위=1, 이후 1)."""
+    return {cat: max(3 - idx, 1) for idx, cat in enumerate(priority_order)}
+
+
 def assign_weights(
     cards: list[ConditionCard], priority_order: list[str]
 ) -> dict[str, int]:
     """카테고리별 가중치. 우선순위 순서대로 3,2,1 부여, 나머지는 카드 weight 유지."""
-    weights: dict[str, int] = {}
-    for idx, cat in enumerate(priority_order):
-        weights[cat] = max(3 - idx, 1)
+    weights = priority_weights(priority_order)
     for c in cards:
-        weights.setdefault(c.category, c.weight or DEFAULT_SOFT_WEIGHT)
+        weights.setdefault(c.category, c.weight)
     return weights
 
 

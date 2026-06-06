@@ -24,7 +24,7 @@ def location_node(state: AgentState) -> dict:
         )
         cached[selected] = analysis
         emit({"type": "location", "listingId": selected, "analysis": analysis})
-    return {"location_analysis": cached}
+    return {"location_analysis": cached, "selected_listing": selected}
 
 
 def _current_selection(state: AgentState, ranked: list[ScoredListing]) -> str:

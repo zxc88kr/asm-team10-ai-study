@@ -17,7 +17,7 @@ from __future__ import annotations
 from app.config import load_dotenv
 from app.providers import get_provider
 from app.runtime import drive, new_session
-from demo import _print  # 이벤트 출력 재사용
+from demo import print_events  # 이벤트 출력 재사용
 
 load_dotenv()
 
@@ -58,12 +58,12 @@ def main() -> None:
             continue
 
         result = drive(sid, text)
-        _print(result)
+        print_events(result)
         while (question := _pending_question(result)) is not None:
             answer = input("   ↩ ").strip()
             payload = _parse_answer(question, answer)
             result = drive(sid, resume=payload)
-            _print(result)
+            print_events(result)
 
 
 if __name__ == "__main__":

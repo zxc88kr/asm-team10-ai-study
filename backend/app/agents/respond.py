@@ -56,15 +56,34 @@ def _topn_reply(state: AgentState) -> str:
 def _delta_reply(state: AgentState) -> str:
     prev, cur = state.get("prev_candidate_count", 0), state.get("candidate_count", 0)
     ranked = state.get("ranked", [])
-    if not ranked:
-        return f"후보가 {prev}건 → {cur}건으로 바뀌었지만 조건에 맞는 매물이 없어요."
-    top = get_listing(ranked[0].listing_id)
-    msg = f"후보가 {prev}건 → {cur}건으로 늘었어요. 새로 들어온 매물로 다시 줄세웠어요. "
-    if ranked[0].listing_id != state.get("prev_top_id"):
-        msg += f"이제 {top.name}({ranked[0].score}점)가 새로 1등이에요 — 월 {top.rent}만 원."
+    if cur > prev:
+        change = f"후보가 {prev}건 → {cur}건으로 늘었어요. 새로 들어온 매물로 다시 줄세웠어요."
+    elif cur < prev:
+        change = f"후보가 {prev}건 → {cur}건으로 줄었어요. 남은 매물로 다시 줄세웠어요."
     else:
-        msg += f"여전히 {top.name}({ranked[0].score}점)가 1순위예요."
-    return msg
+        change = "후보 수는 그대로지만 가중치를 다시 반영했어요."
+    if not ranked:
+        return f"{change} 다만 조건에 맞는 매물이 없어요."
+    top = get_listing(ranked[0].listing_id)
+    if ranked[0].listing_id != state.get("prev_top_id"):
+        return f"{change} 이제 {top.name}({ranked[0].score}점)가 새로 1등이에요 — 월 {top.rent}만 원{_delta_extra(state, top)}."
+    return f"{change} 여전히 {top.name}({ranked[0].score}점)가 1순위예요."
+
+
+def _delta_extra(state: AgentState, top: Listing) -> str:
+    """새 1위가 직전 1위 대비 추가로 주는 가치 + 연간 비용 차이(시나리오 §6 두 갈래)."""
+    prev_top_id = state.get("prev_top_id")
+    if not prev_top_id:
+        return ""
+    prev_top = get_listing(prev_top_id)
+    gained = [o for o in top.options if o not in prev_top.options]
+    annual = (top.rent - prev_top.rent) * 12
+    bits = []
+    if gained:
+        bits.append("·".join(gained[:3]) + " 확보")
+    if annual > 0:
+        bits.append(f"연 {annual}만 원 추가")
+    return f" ({', '.join(bits)})" if bits else ""
 
 
 def _ask_listing_reply(state: AgentState) -> str:
@@ -83,7 +102,9 @@ def _ask_listing_reply(state: AgentState) -> str:
 
 def _location_reply(state: AgentState) -> str:
     analysis = state["location_analysis"]
-    lid = next(iter(analysis))
+    # location_node 가 이번 턴에 해설한 매물을 쓴다(가장 오래된 캐시 키가 아니라).
+    selected = state.get("selected_listing")
+    lid: str = selected if isinstance(selected, str) and selected in analysis else next(iter(analysis))
     listing = get_listing(lid)
     loc = analysis[lid]
     note = loc.get("commute", {}).get("mainNote", "")

@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 
 from app.data.seed import Listing
+from app.parsing import won_after
 from app.providers.base import Provider
 from app.scoring import match_desc, match_geo
 from app.state import CardSource, ConditionCard, Kind, MatchResult, MatchStatus
@@ -29,18 +30,6 @@ EMBED_VOCAB = [
 ]
 _NEG = ("아니", "필요 없", "필요없", "상관없", "괜찮아요 안")
 _LIFESTYLE = ("11시", "요리", "알바", "본가", "학교", "통학", "밤")
-
-
-def _won(text: str, keywords: list[str]) -> int | None:
-    """키워드 뒤 숫자(만원 단위). '5~7만' 처럼 범위면 최댓값."""
-    for kw in keywords:
-        idx = text.find(kw)
-        if idx == -1:
-            continue
-        nums = re.findall(r"\d+", text[idx : idx + 12])
-        if nums:
-            return max(int(n) for n in nums)
-    return None
 
 
 def _card(
@@ -145,16 +134,16 @@ class MockProvider(Provider):
         if ("부산대" in text or "장전" in text) and "area" not in carded:
             new.append(_card("c_area", "지역", "area", "hard", "said", "부산대 신입"))
             updates["area"] = "부산대"
-        dep = _won(text, ["보증금", "보 "])
-        rent = _won(text, ["월세", "월 "])
+        dep = won_after(text, ["보증금"])
+        rent = won_after(text, ["월세"])
         if (dep or rent) and "budget" not in carded:
             new.append(_card("c_budget", "예산", "budget", "hard", "said", text[:40]))
-        if dep:
+        if dep is not None:
             updates["deposit"] = dep
-        if rent:
+        if rent is not None:
             updates["rent"] = rent
-        mgmt = _won(text, ["관리비"])
-        if mgmt:
+        mgmt = won_after(text, ["관리비"])
+        if mgmt is not None:
             updates["mgmt_fee_max"] = mgmt
 
     def _extract_soft(

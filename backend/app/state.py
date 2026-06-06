@@ -64,11 +64,12 @@ def derived_count(cards: list[ConditionCard]) -> int:  # 추출 + 발굴
 
 
 def differentiation_ratio(cards: list[ConditionCard]) -> dict:
-    """핵심 차별 지표 1:N (목표 1:3~1:6). FE 상단 배지용."""
+    """핵심 차별 지표. 스펙 메트릭 계약 {ratio:"1:6", said:2, derived:6} 에 맞춰
+    사용자측(직접 발화)을 1로 정규화한다. said/derived 는 별도 필드로 그대로 노출."""
     said = said_count(cards)
     derived = derived_count(cards)
-    n = round(derived / said) if said else derived
-    return {"ratio": f"1:{n}", "said": said, "derived": derived}
+    ratio = f"1:{derived}" if said else f"0:{derived}"
+    return {"ratio": ratio, "said": said, "derived": derived}
 
 
 def merge_cards(
@@ -103,6 +104,7 @@ class AgentState(TypedDict, total=False):
     candidate_count: int
     ranked: list[ScoredListing]
     location_analysis: dict
+    selected_listing: str | None  # location_node 가 이번 턴에 해설한 매물
     asked_dimensions: list[str]
     stage: str  # "needs" | "listings" | "location" | "done"
     intent: str  # ingest가 채움

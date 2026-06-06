@@ -9,6 +9,7 @@ from langgraph.types import interrupt
 from app.blindspots import pick_blind_spot
 from app.events import emit
 from app.providers import get_provider
+from app.scoring import priority_weights
 from app.state import AgentState, ConditionCard, differentiation_ratio
 
 MAX_DISCOVER = 3  # 설문화 방지: 발굴 역질문 최대 횟수
@@ -48,13 +49,23 @@ def discover_node(state: AgentState) -> dict:
     question = get_provider().discover_question(cat, desc, state.get("cards", []))
 
     # ⏸ 여기서 멈춘다. interrupt 앞에 부수효과를 두지 않는다(재개 시 재실행됨).
-    answer = interrupt({"type": "discover_question", "category": cat, "text": question})
+    raw = interrupt({"type": "discover_question", "category": cat, "text": question})
 
-    # resume 후: 사용자의 답을 메시지에 싣고 asked에 기록 → extract가 카드화
+    # resume 후: 사용자의 답을 메시지에 싣고 asked에 기록 → extract가 카드화.
+    # HTTP /resume 가 비문자열을 보내도 안전하게 문자열로 정규화한다.
+    answer = _resume_text(raw)
     return {
         "messages": [{"role": "user", "content": answer}],
         "asked_dimensions": state.get("asked_dimensions", []) + [cat],
     }
+
+
+def _resume_text(raw: Any) -> str:
+    if isinstance(raw, str):
+        return raw
+    if isinstance(raw, dict):
+        return str(raw.get("text", ""))
+    return str(raw)
 
 
 def prioritize_node(state: AgentState) -> dict:
@@ -63,7 +74,7 @@ def prioritize_node(state: AgentState) -> dict:
 
     # resume: 사용자가 정렬한 순서로 가중치 부여 (1순위=3 …). 페이로드 형태에 방어적.
     chosen = _coerce_order(order, soft_cats)
-    weights = {cat: max(3 - idx, 1) for idx, cat in enumerate(chosen)}
+    weights = priority_weights(chosen)
     cards = [
         _reweight(c, weights.get(c.category, c.weight)) for c in state.get("cards", [])
     ]

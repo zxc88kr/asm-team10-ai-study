@@ -29,7 +29,6 @@ _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
 PRO_CANDIDATES = ["solar-pro2", "solar-pro", "solar-pro3"]
-MINI_CANDIDATES = ["solar-mini", "solar-1-mini-chat"]
 from app.config import load_dotenv  # noqa: E402
 
 _results: list[tuple[str, bool, str]] = []

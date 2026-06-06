@@ -43,9 +43,10 @@ def test_differentiation_ratio_counts():
     ]
     assert said_count(cards) == 2
     assert derived_count(cards) == 6
-    assert differentiation_ratio(cards) == {"ratio": "1:3", "said": 2, "derived": 6}
+    # 스펙 메트릭 계약: {ratio:"1:6", said:2, derived:6} — 사용자측을 1로 정규화
+    assert differentiation_ratio(cards) == {"ratio": "1:6", "said": 2, "derived": 6}
 
 
 def test_differentiation_ratio_no_said():
     cards = [_card("a", "extracted")]
-    assert differentiation_ratio(cards)["ratio"] == "1:1"
+    assert differentiation_ratio(cards)["ratio"] == "0:1"  # said==0 가드

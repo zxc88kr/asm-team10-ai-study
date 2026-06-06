@@ -46,8 +46,8 @@ def test_needs_phase_produces_top3_and_ratio():
     ranked = _events(r, "ranked")[-1]["ranked"]
     assert [x["listingId"] for x in ranked] == ["A", "B", "C"]
     assert ranked[0]["score"] > ranked[1]["score"] > ranked[2]["score"]
-    # 차별 지표: 직접 2 : 발굴/추출 6 → 1:3
-    assert "1:3" in _events(r, "message")[0]["text"]
+    # 차별 지표: 직접 2 : 발굴/추출 6 → 1:6 (스펙 메트릭 계약)
+    assert "1:6" in _events(r, "message")[0]["text"]
 
 
 def test_differentiation_metric_streamed():
