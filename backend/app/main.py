@@ -11,14 +11,27 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
 from app.config import load_dotenv
+from app.data.seed import load_listings
 from app.runtime import new_session, run_turn
 
 load_dotenv()  # .env 의 ROOMPILOT_PROVIDER / UPSTAGE_API_KEY 로드
 app = FastAPI(title="RoomPilot Backend", version="0.1.0")
+
+# 프론트엔드(Vite dev) 가 브라우저에서 호출하므로 CORS 허용.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class MsgIn(BaseModel):
@@ -49,6 +62,21 @@ async def message(sid: str, body: MsgIn) -> EventSourceResponse:
 @app.post("/session/{sid}/resume")
 async def resume(sid: str, body: ResumeIn) -> EventSourceResponse:
     return EventSourceResponse(_sse(sid, resume=body.payload))
+
+
+@app.get("/listings")
+def listings() -> dict:
+    """시드 매물(가상). 프론트가 ranked/location 이벤트의 매물 상세를 해석하는 데 사용."""
+    items = [
+        {
+            "id": x.id, "name": x.name, "type": x.type, "area": x.area,
+            "deposit": x.deposit, "rent": x.rent, "mgmtFee": x.mgmt_fee,
+            "pyeong": x.pyeong, "floor": x.floor, "options": x.options,
+            "desc": x.desc, "geo": x.geo, "location": x.location,
+        }
+        for x in load_listings()
+    ]
+    return {"listings": items, "dataSource": "seed"}
 
 
 @app.get("/health")

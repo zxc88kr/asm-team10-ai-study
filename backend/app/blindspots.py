@@ -8,11 +8,12 @@ from __future__ import annotations
 from app.state import AgentState
 
 # (category, 사람이 읽는 설명) — 우선순위 순서대로 둔다.
+# 'noise(방음)'는 카드화 대상이 아니라 '설명에 없으면 지어내지 않는다'는 환각 데모 주제이므로
+# 발굴 차원에서 제외한다(점수화 가능한 category 만 둔다).
 BLIND_SPOT_CHECKLIST: list[tuple[str, str]] = [
     ("safety", "야간 단독 귀가 동선 안전"),
     ("security", "택배·공동현관 보안"),
     ("light", "채광·환기·습기(곰팡이)"),
-    ("noise", "방음"),
     ("kitchen", "주방 분리/환기"),
 ]
 
