@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd C:\\dev\\asm-team10-ai-study\\frontend && npm run lint --silent 2>&1 | head -20"
+          }
+        ]
+      }
+    ]
+  }
+}
