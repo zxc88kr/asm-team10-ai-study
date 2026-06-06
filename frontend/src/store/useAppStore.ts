@@ -3,7 +3,7 @@ import { GREETING } from '../data/scenario'
 import { CONDITION_CARDS } from '../data/conditions'
 import { LISTINGS } from '../data/listings'
 import { postMessage } from '../services/agentApi'
-import type { Listing, HardConstraints, Message, ScoredListing, Status, BreakdownItem, ActiveView } from '../types'
+import type { Listing, HardConstraints, Message, ScoredListing, Status, BreakdownItem, ActiveView, AgentConditions } from '../types'
 
 const RENT_ALLOWANCE = 5
 const STATUS_VAL: Record<Status, number> = { full: 1, partial: 0.5, none: 0 }
@@ -56,7 +56,9 @@ interface AppState {
   toastMessage: string | null
   sessionId: string
   conditionsComplete: boolean
+  agentConditions: AgentConditions | null
   advance: (displayText?: string) => void
+  sendMessage: (text: string) => void
   runRecommendation: (advanceSteps: boolean) => void
   updateRent: (value: number) => void
   reset: () => void
@@ -80,6 +82,7 @@ const useAppStore = create<AppState>((set, get) => ({
   toastMessage: null,
   sessionId: `session_${Date.now()}`,
   conditionsComplete: false,
+  agentConditions: null,
 
   advance(displayText?: string) {
     const msg = (displayText ?? '').trim()
@@ -107,6 +110,7 @@ const useAppStore = create<AppState>((set, get) => ({
           cards: [...s.cards, ...addCards],
           isTyping: false,
           conditionsComplete: result.missing_required_conditions.length === 0,
+          agentConditions: result,
           messages: [...s.messages, { role: 'ai', text: result.next_question }],
         }
       })
@@ -119,6 +123,10 @@ const useAppStore = create<AppState>((set, get) => ({
         }],
       }))
     })
+  },
+
+  sendMessage(text: string) {
+    get().advance(text)
   },
 
   runRecommendation(advanceSteps: boolean) {
@@ -159,6 +167,7 @@ const useAppStore = create<AppState>((set, get) => ({
       toastMessage: null,
       sessionId: `session_${Date.now()}`,
       conditionsComplete: false,
+      agentConditions: null,
     })
   },
 
