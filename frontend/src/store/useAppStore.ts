@@ -1,7 +1,8 @@
 import { create } from 'zustand'
-import { SCENARIO, GREETING } from '../data/scenario'
+import { GREETING } from '../data/scenario'
 import { CONDITION_CARDS } from '../data/conditions'
 import { LISTINGS } from '../data/listings'
+import { postMessage } from '../services/agentApi'
 import type { Listing, HardConstraints, Message, ScoredListing, Status, BreakdownItem, ActiveView } from '../types'
 
 const RENT_ALLOWANCE = 5
@@ -40,8 +41,6 @@ function scoreListing(L: Listing, hard: HardConstraints, cards: string[]): Score
   return { excluded: false, score, breakdown, penalty }
 }
 
-const END_MSG = '이 프로토타입의 시나리오는 여기까지예요. 오른쪽에서 추천 매물을 확인하거나 조건을 수정해 보세요 🙂'
-
 interface AppState {
   turn: number
   hard: HardConstraints
@@ -55,6 +54,8 @@ interface AppState {
   activeView: ActiveView
   selectedListingId: string | null
   toastMessage: string | null
+  sessionId: string
+  conditionsComplete: boolean
   advance: (displayText?: string) => void
   runRecommendation: (advanceSteps: boolean) => void
   updateRent: (value: number) => void
@@ -77,47 +78,47 @@ const useAppStore = create<AppState>((set, get) => ({
   activeView: 'chat',
   selectedListingId: null,
   toastMessage: null,
+  sessionId: `session_${Date.now()}`,
+  conditionsComplete: false,
 
   advance(displayText?: string) {
-    const { turn } = get()
+    const msg = (displayText ?? '').trim()
+    if (!msg) return
 
-    if (turn >= SCENARIO.length) {
-      if (!displayText) return
-      set(s => ({ messages: [...s.messages, { role: 'user', text: displayText }], isTyping: true }))
-      setTimeout(() => {
-        set(s => ({ isTyping: false, messages: [...s.messages, { role: 'ai', text: END_MSG }] }))
-      }, 650)
-      return
-    }
+    set(s => ({ messages: [...s.messages, { role: 'user', text: msg }], isTyping: true }))
 
-    const step = SCENARIO[turn]
-    const userMsg = displayText || step.userText
+    void postMessage(msg, get().sessionId).then(result => {
+      const { monthly_rent, location_transport } = result.hard_conditions
+      const { basement } = result.soft_conditions
 
-    set(s => ({ messages: [...s.messages, { role: 'user', text: userMsg }], isTyping: true }))
+      set(s => {
+        const newHard: HardConstraints = { ...s.hard }
+        if (monthly_rent.max_manwon !== null) newHard.rent = monthly_rent.max_manwon
+        if (location_transport.commute_time_max_minutes !== null) newHard.commuteMax = location_transport.commute_time_max_minutes
+        if (basement.avoid === true) newHard.noBasement = true
 
-    if (step.hard) {
-      set(s => ({ hard: { ...s.hard, ...step.hard } }))
-    }
+        const addCards: string[] = []
+        if (monthly_rent.max_manwon !== null && !s.cards.includes('budget_75')) addCards.push('budget_75')
+        if (location_transport.commute_time_max_minutes !== null && !s.cards.includes('gangnam_commute')) addCards.push('gangnam_commute')
+        if (basement.avoid === true && !s.cards.includes('no_basement')) addCards.push('no_basement')
 
-    ;(step.cards || []).forEach((cid, i) => {
-      setTimeout(() => {
-        set(s => s.cards.includes(cid) ? {} : { cards: [...s.cards, cid] })
-      }, 300 + i * 260)
-    })
-
-    set(s => ({ turn: s.turn + 1 }))
-
-    setTimeout(() => {
-      if (step.recommend) {
-        set(s => ({
+        return {
+          hard: newHard,
+          cards: [...s.cards, ...addCards],
           isTyping: false,
-          messages: [...s.messages, { role: 'ai', text: step.aiText, searching: true }],
-        }))
-        setTimeout(() => get().runRecommendation(true), 1200)
-      } else {
-        set(s => ({ isTyping: false, messages: [...s.messages, { role: 'ai', text: step.aiText }] }))
-      }
-    }, 650)
+          conditionsComplete: result.missing_required_conditions.length === 0,
+          messages: [...s.messages, { role: 'ai', text: result.next_question }],
+        }
+      })
+    }).catch(() => {
+      set(s => ({
+        isTyping: false,
+        messages: [...s.messages, {
+          role: 'ai' as const,
+          text: '서버에 연결할 수 없어요. 백엔드가 실행 중인지 확인해주세요.',
+        }],
+      }))
+    })
   },
 
   runRecommendation(advanceSteps: boolean) {
@@ -156,6 +157,8 @@ const useAppStore = create<AppState>((set, get) => ({
       activeView: 'chat',
       selectedListingId: null,
       toastMessage: null,
+      sessionId: `session_${Date.now()}`,
+      conditionsComplete: false,
     })
   },
 

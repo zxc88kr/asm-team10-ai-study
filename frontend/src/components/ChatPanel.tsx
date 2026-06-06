@@ -2,7 +2,6 @@ import type { KeyboardEvent } from 'react'
 import { useRef, useEffect, useState } from 'react'
 import { Bot, User, HelpCircle, Bell, RotateCcw, Paperclip, Mic, Send } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
-import { SCENARIO } from '../data/scenario'
 
 function formatTime() {
   const now = new Date()
@@ -13,7 +12,7 @@ function formatTime() {
 }
 
 export default function ChatPanel() {
-  const { messages, isTyping, advance, reset, turn } = useAppStore()
+  const { messages, isTyping, advance, reset, conditionsComplete, recommended, runRecommendation } = useAppStore()
   const [inputVal, setInputVal] = useState('')
   const [currentTime] = useState(formatTime)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -22,8 +21,6 @@ export default function ChatPanel() {
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, isTyping])
-
-  const nextStep = SCENARIO[turn]
 
   const handleSend = (text?: string) => {
     const msg = text ?? inputVal.trim()
@@ -96,14 +93,14 @@ export default function ChatPanel() {
       </div>
 
       <div className="composer">
-        {nextStep && !isTyping && (
+        {conditionsComplete && !recommended && !isTyping && (
           <div className="quick">
             <button
               className="chip"
-              onClick={() => handleSend(nextStep.userText)}
+              onClick={() => runRecommendation(true)}
               type="button"
             >
-              {nextStep.userText}
+              매물 찾기
             </button>
           </div>
         )}
@@ -126,7 +123,7 @@ export default function ChatPanel() {
             className="send"
             onClick={() => handleSend()}
             type="button"
-            disabled={!inputVal.trim() && !nextStep}
+            disabled={!inputVal.trim()}
             aria-label="보내기"
           >
             <Send size={16} />
