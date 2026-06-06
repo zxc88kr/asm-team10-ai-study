@@ -1,9 +1,28 @@
 import { create } from 'zustand'
 import { createSession, fetchListings, streamMessage, streamResume } from '../api/client'
-import type { LiveCard, LiveEvent, LiveListing, LiveMetric, LiveQuestion, LiveRanked } from '../api/types'
+import type { LiveCard, LiveEvent, LiveListing, LiveLocation, LiveMetric, LiveQuestion, LiveRanked } from '../api/types'
 
 const GREETING =
   '안녕하세요! AI 주거 코치 RoomPilot입니다. 부산대 근처 자취방을 찾고 계신가요?\n예산·지역을 알려주시면 대화로 숨은 조건까지 같이 찾아드릴게요.'
+
+const FAV_KEY = 'roompilot.favorites'
+
+function loadFavorites(): string[] {
+  try {
+    const raw = localStorage.getItem(FAV_KEY)
+    return raw ? (JSON.parse(raw) as string[]) : []
+  } catch {
+    return []
+  }
+}
+
+function saveFavorites(ids: string[]): void {
+  try {
+    localStorage.setItem(FAV_KEY, JSON.stringify(ids))
+  } catch {
+    /* localStorage 미지원 환경 무시 */
+  }
+}
 
 export interface ChatMsg {
   role: 'ai' | 'user'
@@ -21,14 +40,17 @@ interface LiveState {
   cards: LiveCard[]
   metric: LiveMetric | null
   ranked: LiveRanked[]
-  location: Record<string, Record<string, unknown>>
+  location: Record<string, LiveLocation>
   selectedListing: string | null
   listings: Record<string, LiveListing>
   stage: Stage
   pending: LiveQuestion | null
+  favorites: string[]
   init: () => Promise<void>
   send: (text: string) => Promise<void>
   answerPriority: (order: string[]) => Promise<void>
+  analyzeListing: (id: string) => Promise<void>
+  toggleFavorite: (id: string) => void
   reset: () => Promise<void>
 }
 
@@ -58,7 +80,7 @@ function reduce(s: LiveState, e: LiveEvent): Partial<LiveState> {
     case 'ranked':
       return { ranked: e.ranked, stage: 'listings' }
     case 'location':
-      return { location: { ...s.location, [e.listingId]: e.analysis }, selectedListing: e.listingId, stage: 'location' }
+      return { location: { ...s.location, [e.listingId]: e.analysis as LiveLocation }, selectedListing: e.listingId, stage: 'location' }
     case 'message':
       return { messages: [...s.messages, { role: e.role, text: e.text }] }
     default:
@@ -83,6 +105,7 @@ const useLiveStore = create<LiveState>((set, get) => {
     listings: {},
     stage: 'needs',
     pending: null,
+    favorites: loadFavorites(),
 
     async init() {
       set({ busy: true, error: null })
@@ -133,6 +156,23 @@ const useLiveStore = create<LiveState>((set, get) => {
       } finally {
         set({ busy: false })
       }
+    },
+
+    async analyzeListing(id: string) {
+      const { listings, busy } = get()
+      if (busy) return
+      const name = listings[id]?.name ?? id
+      await get().send(`${name} 입지 분석해줘`)
+    },
+
+    toggleFavorite(id: string) {
+      set(s => {
+        const favorites = s.favorites.includes(id)
+          ? s.favorites.filter(f => f !== id)
+          : [...s.favorites, id]
+        saveFavorites(favorites)
+        return { favorites }
+      })
     },
 
     async reset() {

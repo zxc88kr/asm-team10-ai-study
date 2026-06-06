@@ -30,6 +30,58 @@ export interface LiveRanked {
   tradeoff: string | null
 }
 
+export interface LiveGeo {
+  lat?: number
+  lng?: number
+  subway?: string
+  line?: string
+  station_walk_min?: number
+  campus_walk_min?: number
+  [k: string]: unknown
+}
+
+export interface CommuteLeg {
+  label: string
+  minutes: number
+  type: string
+}
+
+export interface SafetyItem {
+  icon?: string
+  label: string
+  detail?: string
+  pass: boolean
+}
+
+export interface ConvenienceItem {
+  name: string
+  walkMin: number
+  icon?: string
+}
+
+export interface NearbyHit {
+  distanceM: number
+  walkMin: number
+  name: string
+}
+
+export interface LocationFacts {
+  counts?: Record<string, number>
+  nearest?: Record<string, NearbyHit>
+  campusWalkMin?: number
+}
+
+export interface LiveLocation {
+  commute?: { legs?: CommuteLeg[]; totalMinutes?: number; transfers?: number; mainNote?: string }
+  nightSafety?: SafetyItem[]
+  convenience?: ConvenienceItem[]
+  pros?: string[]
+  cons?: string[]
+  aiComment?: string
+  dataSource?: string
+  facts?: LocationFacts
+}
+
 export interface LiveListing {
   id: string
   name: string
@@ -42,8 +94,8 @@ export interface LiveListing {
   floor: number
   options: string[]
   desc: string
-  geo: Record<string, unknown>
-  location: Record<string, unknown>
+  geo: LiveGeo
+  location: LiveLocation
 }
 
 export interface LiveMetric {
