@@ -59,8 +59,8 @@ export default function ChatPanel() {
       <div className="chat-scroll" ref={scrollRef}>
         {messages.map((msg, i) => (
           <div key={i} className={`msg ${msg.role}`}>
-            {msg.role === 'ai' && <div className="avatar"><Bot size={15} /></div>}
-            {msg.role === 'user' && <div className="avatar user-av"><User size={15} /></div>}
+            {msg.role === 'ai' && <div className="avatar"><Bot size={20} /></div>}
+            {msg.role === 'user' && <div className="avatar user-av"><User size={20} /></div>}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: '100%' }}>
               {msg.searching ? (
                 <div className="searching-bubble">
@@ -82,7 +82,7 @@ export default function ChatPanel() {
 
         {isTyping && (
           <div className="msg ai typing">
-            <div className="avatar"><Bot size={15} /></div>
+            <div className="avatar"><Bot size={20} /></div>
             <div className="bubble">
               <span className="dot" />
               <span className="dot" />

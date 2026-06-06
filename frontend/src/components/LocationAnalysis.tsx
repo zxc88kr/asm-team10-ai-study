@@ -42,7 +42,7 @@ export default function LocationAnalysisSummary() {
                 style={{ width: `${bar.score}%` }}
               />
             </div>
-            <span className="loc-bar-val" style={{ color: bar.quality === 'good' ? 'var(--green)' : bar.quality === 'ok' ? 'var(--amber)' : 'var(--red)' }}>
+            <span className="loc-bar-val">
               {getLabel(bar.quality)}
             </span>
           </div>

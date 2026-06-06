@@ -35,7 +35,9 @@ export default function RecommendationList({ onSelectListing, selectedId }: Prop
     <div className="card">
       <div className="card-head">
         <h2>추천 매물 TOP 3</h2>
-        <button className="card-link" type="button">전체 보기</button>
+        <button className="card-link" type="button">
+          전체 보기
+        </button>
       </div>
       <ul className="rec-list">
         {lastTop.map((sl, idx) => (
@@ -44,11 +46,15 @@ export default function RecommendationList({ onSelectListing, selectedId }: Prop
             className={`rec-item${idx === 0 ? ' top1' : ''}${selectedId === sl.L.id ? ' selected' : ''}`}
             onClick={() => handleClick(sl)}
           >
-            <div className={`rank-badge${idx === 0 ? ' gold' : ''}`}>{idx + 1}</div>
+            <div className={`rank-badge${idx === 0 ? ' gold' : idx === 1 ? ' silver' : ' bronze'}`}>
+              {idx + 1}
+            </div>
             <div className="thumb">{sl.L.thumb}</div>
             <div className="rec-body">
-              <div className="rec-name">{sl.L.name}</div>
-              <div className="rec-meta">출퇴근 {sl.L.commuteMin}분 · 월 {sl.L.rent}만 원</div>
+              <div className="flex items-center gap-2">
+                <div className="rec-name">{sl.L.name}</div>
+                <span className="rec-name-arrow">→</span>
+              </div>
               <div className="rec-tags">
                 <span className="rec-tag">출퇴근 {sl.L.commuteMin}분</span>
                 <span className="rec-tag">월 {sl.L.rent}만</span>
@@ -56,7 +62,7 @@ export default function RecommendationList({ onSelectListing, selectedId }: Prop
             </div>
             <div className={`score-badge ${scoreClass(sl.score)}`}>
               {sl.score}
-              <span>최종 점수</span>
+              <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--muted)' }}>점</span>
             </div>
           </li>
         ))}
