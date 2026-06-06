@@ -19,16 +19,26 @@
 cd backend
 pip install "langgraph>=0.2"            # mock 경로는 langgraph만 있으면 됨
 python -m pytest                        # 전체 테스트 (민지 시나리오 E2E 포함)
-python demo.py                          # 콘솔에서 민지 시나리오 9턴 재생
+python demo.py                          # 콘솔에서 민지 시나리오 9턴 재생(자동)
+python chat.py                          # 대화형 CLI — 직접 입력하며 테스트
 ```
 
-## API 서버
+## 4 게이트 (커밋 전 필수)
+
+```bash
+python -m ruff check .   # lint
+python -m mypy           # typecheck
+python -m pytest         # test
+python -m compileall -q app tests demo.py chat.py scripts   # build
+```
+
+## API 서버 (SSE)
 
 ```bash
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload          # http://localhost:8000/docs (Swagger UI)
 # POST /session                  → {session_id}
-# POST /session/{id}/message     → SSE (card/metric/question/ranked/location/message)
+# POST /session/{id}/message     → SSE (card/metric/question/ranked/location/message/done)
 # POST /session/{id}/resume      → SSE (interrupt 응답: 역질문/우선순위/매물선택)
 ```
 

@@ -9,6 +9,7 @@ sse-starlette>=2.0
 # --- 실제 Upstage 연동 (ROOMPILOT_PROVIDER=upstage 일 때만 필요) ---
 langchain-upstage>=0.7.7   # solar-pro2 / solar-mini / solar-embedding-1-large
 
-# --- 개발/테스트 ---
+# --- 개발/테스트 (4 게이트: ruff / mypy / pytest / compileall) ---
 pytest>=8.0
 ruff>=0.5
+mypy>=1.10

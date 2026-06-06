@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from langgraph.types import interrupt
 
 from app.blindspots import pick_blind_spot
@@ -41,7 +43,8 @@ def route_after_extract(state: AgentState) -> str:
 
 def discover_node(state: AgentState) -> dict:
     blind = pick_blind_spot(state)
-    cat, desc = blind  # route_after_extract가 None이 아님을 보장
+    assert blind is not None, "route_after_extract가 사각지대 존재를 보장"
+    cat, desc = blind
     question = get_provider().discover_question(cat, desc, state.get("cards", []))
 
     # ⏸ 여기서 멈춘다. interrupt 앞에 부수효과를 두지 않는다(재개 시 재실행됨).
@@ -67,7 +70,7 @@ def prioritize_node(state: AgentState) -> dict:
     return {"priority_order": chosen, "cards": cards, "stage": "listings"}
 
 
-def _coerce_order(order, soft_cats: list[str]) -> list[str]:
+def _coerce_order(order: Any, soft_cats: list[str]) -> list[str]:
     """resume 페이로드를 우선순위 리스트로 정규화. {"order":[...]} / [...] / 그 외 → 기본값."""
     if isinstance(order, dict):
         return order.get("order") or soft_cats

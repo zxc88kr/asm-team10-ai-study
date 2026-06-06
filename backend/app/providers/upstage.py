@@ -47,28 +47,36 @@ class UpstageProvider(Provider):
         )
         return {"intent": out.get("intent", "chitchat"), "edit": out.get("edit")}
 
-    def extract(self, text, cards, asked_dimensions, hard):
+    def extract(
+        self,
+        text: str,
+        cards: list[ConditionCard],
+        asked_dimensions: list[str],
+        hard: dict,
+    ) -> tuple[list[ConditionCard], dict]:
         out = self._llm_pro.with_structured_output(EXTRACT_SCHEMA).invoke(
             [{"role": "system", "content": EXTRACT_SYSTEM}, {"role": "user", "content": text}]
         )
         new = [self._to_card(c, asked_dimensions) for c in out.get("cards", [])]
-        updates = {}
+        updates: dict = {}
         for c in new:
             if c.kind == "hard":
                 updates.update(_card_to_hard(c, text))
         return new, updates
 
-    def discover_question(self, category, desc, cards) -> str:
+    def discover_question(self, category: str, desc: str, cards: list[ConditionCard]) -> str:
         prompt = (
             f"사용자의 생활 맥락에서 '{desc}'({category}) 차원을 공감+근거 형태로 한 문장 역질문해라. "
             "설문처럼 묻지 말고 자연스럽게."
         )
-        return self._llm_pro.invoke([{"role": "user", "content": prompt}]).content
+        return str(self._llm_pro.invoke([{"role": "user", "content": prompt}]).content)
 
     def embed(self, text: str) -> list[float]:
         return self._emb.embed_query(text)
 
-    def score_listing(self, listing, cards):
+    def score_listing(
+        self, listing: Listing, cards: list[ConditionCard]
+    ) -> tuple[list[MatchResult], str | None]:
         soft = [c for c in cards if c.kind == "soft"]
         payload = {
             "desc": listing.desc,
@@ -100,7 +108,9 @@ class UpstageProvider(Provider):
         )
         return out.get("verdict", "notSure")
 
-    def analyze_location(self, listing, cards, priority_order):
+    def analyze_location(
+        self, listing: Listing, cards: list[ConditionCard], priority_order: list[str]
+    ) -> dict:
         # 입지 raw(geo/location) 를 카드 관점으로 번역. 데모는 시드 location 을 기반으로 LLM 보강.
         return {**listing.location, "dataSource": "seed"}
 
@@ -117,7 +127,9 @@ class UpstageProvider(Provider):
             reason=c.get("reason", ""),
         )
 
-    def _fill_geo(self, listing: Listing, soft, breakdown) -> None:
+    def _fill_geo(
+        self, listing: Listing, soft: list[ConditionCard], breakdown: list[MatchResult]
+    ) -> None:
         have = {m.card_id for m in breakdown}
         for c in soft:
             if c.category in ("transit", "commute") and c.id not in have:

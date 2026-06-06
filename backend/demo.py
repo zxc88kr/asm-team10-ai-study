@@ -32,7 +32,7 @@ _DISCOVER_ANSWERS = {
 }
 
 
-def auto_resume(question: dict):
+def auto_resume(question: dict) -> dict | str:
     """HITL 질문 종류별 자동 응답 생성."""
     qtype = question.get("questionType")
     if qtype == "edit_priority":
@@ -43,7 +43,8 @@ def auto_resume(question: dict):
         options = question.get("options", [])
         return {"listing_id": options[0] if options else "A"}
     # discover_question (또는 기타) → 발화형 답변
-    return _DISCOVER_ANSWERS.get(question.get("category"), "네, 그것도 중요해요.")
+    category = str(question.get("category", ""))
+    return _DISCOVER_ANSWERS.get(category, "네, 그것도 중요해요.")
 
 
 def _print(result: dict) -> None:

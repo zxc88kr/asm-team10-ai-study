@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import AsyncIterator
 from typing import Any
 
 from fastapi import FastAPI
@@ -28,7 +29,9 @@ class ResumeIn(BaseModel):
     payload: Any
 
 
-async def _sse(session_id: str, text: str | None = None, resume: Any = None):
+async def _sse(
+    session_id: str, text: str | None = None, resume: Any = None
+) -> AsyncIterator[dict]:
     async for event in run_turn(session_id, text, resume):
         yield {"event": event.get("type", "message"), "data": json.dumps(event, ensure_ascii=False)}
 

@@ -12,7 +12,7 @@ import re
 from app.data.seed import Listing
 from app.providers.base import Provider
 from app.scoring import match_desc, match_geo
-from app.state import ConditionCard, MatchResult
+from app.state import CardSource, ConditionCard, Kind, MatchResult, MatchStatus
 
 # 발굴 차원 → 카드 라벨
 DISCOVER_LABEL = {
@@ -43,7 +43,9 @@ def _won(text: str, keywords: list[str]) -> int | None:
     return None
 
 
-def _card(cid, label, cat, kind, source, reason) -> ConditionCard:
+def _card(
+    cid: str, label: str, cat: str, kind: Kind, source: CardSource, reason: str
+) -> ConditionCard:
     return ConditionCard(
         id=cid, label=label, category=cat, kind=kind, source=source, reason=reason
     )
@@ -76,7 +78,13 @@ class MockProvider(Provider):
             return {"intent": "select_listing", "edit": None}
         return {"intent": "provide_info" if stage == "needs" else "chitchat", "edit": None}
 
-    def extract(self, text, cards, asked_dimensions, hard):
+    def extract(
+        self,
+        text: str,
+        cards: list[ConditionCard],
+        asked_dimensions: list[str],
+        hard: dict,
+    ) -> tuple[list[ConditionCard], dict]:
         carded = {c.category for c in cards}
         new: list[ConditionCard] = []
         updates: dict = {}
@@ -85,7 +93,7 @@ class MockProvider(Provider):
         self._extract_discovered(text, asked_dimensions, carded, new)
         return new, updates
 
-    def discover_question(self, category, desc, cards) -> str:
+    def discover_question(self, category: str, desc: str, cards: list[ConditionCard]) -> str:
         templates = {
             "safety": "밤 11시에 혼자 들어가는 길이 매일이잖아요. 집 보러 다닐 때 "
             "'이 골목 좀 무섭다' 같은 거 신경 쓰는 편이에요? 첫 자취생이 제일 후회하는 부분이라서요.",
@@ -102,7 +110,9 @@ class MockProvider(Provider):
     def embed(self, text: str) -> list[float]:
         return [float(text.count(tok)) for tok in EMBED_VOCAB]
 
-    def score_listing(self, listing, cards):
+    def score_listing(
+        self, listing: Listing, cards: list[ConditionCard]
+    ) -> tuple[list[MatchResult], str | None]:
         breakdown: list[MatchResult] = []
         for c in cards:
             if c.kind != "soft":
@@ -119,7 +129,9 @@ class MockProvider(Provider):
         return "grounded" if answer[:12] in context else "notGrounded"
 
     # ------------------------------------------------------------------ Agent 3
-    def analyze_location(self, listing, cards, priority_order):
+    def analyze_location(
+        self, listing: Listing, cards: list[ConditionCard], priority_order: list[str]
+    ) -> dict:
         loc = dict(listing.location)
         loc["basis"] = self._basis(cards, priority_order, listing)
         loc["scoreBreakdown"] = self._loc_scores(listing)
@@ -127,7 +139,9 @@ class MockProvider(Provider):
         return loc
 
     # ------------------------------------------------------------- internals
-    def _extract_hard(self, text, carded, new, updates):
+    def _extract_hard(
+        self, text: str, carded: set[str], new: list[ConditionCard], updates: dict
+    ) -> None:
         if ("부산대" in text or "장전" in text) and "area" not in carded:
             new.append(_card("c_area", "지역", "area", "hard", "said", "부산대 신입"))
             updates["area"] = "부산대"
@@ -143,7 +157,14 @@ class MockProvider(Provider):
         if mgmt:
             updates["mgmt_fee_max"] = mgmt
 
-    def _extract_soft(self, text, carded, hard, updates, new):
+    def _extract_soft(
+        self,
+        text: str,
+        carded: set[str],
+        hard: dict,
+        updates: dict,
+        new: list[ConditionCard],
+    ) -> None:
         if ("11시" in text or "밤" in text) and "transit" not in carded:
             new.append(_card("c_transit", "심야 교통", "transit", "soft", "extracted", text[:40]))
         if "요리" in text and "kitchen" not in carded:
@@ -152,7 +173,9 @@ class MockProvider(Provider):
         if area_known and "commute" not in carded and any(k in text for k in _LIFESTYLE):
             new.append(_card("c_commute", "통학 부담", "commute", "soft", "extracted", "부산대 신입"))
 
-    def _extract_discovered(self, text, asked_dimensions, carded, new):
+    def _extract_discovered(
+        self, text: str, asked_dimensions: list[str], carded: set[str], new: list[ConditionCard]
+    ) -> None:
         if not asked_dimensions:
             return
         last = asked_dimensions[-1]
@@ -161,7 +184,7 @@ class MockProvider(Provider):
         label = DISCOVER_LABEL.get(last, last)
         new.append(_card(f"c_{last}", label, last, "soft", "discovered", f"(추론) {text[:30]}"))
 
-    def _judge(self, listing: Listing, card: ConditionCard) -> tuple[str, str]:
+    def _judge(self, listing: Listing, card: ConditionCard) -> tuple[MatchStatus, str]:
         if card.category in ("transit", "commute"):
             key = "station_walk_min" if card.category == "transit" else "campus_walk_min"
             wm = int(listing.geo.get(key, 99))
@@ -171,7 +194,9 @@ class MockProvider(Provider):
         status = match_desc(card.category, listing.desc)
         return status, (_pick_sentence(listing.desc, card.category) if status != "none" else "")
 
-    def _tradeoff(self, breakdown, cards) -> str | None:
+    def _tradeoff(
+        self, breakdown: list[MatchResult], cards: list[ConditionCard]
+    ) -> str | None:
         by = {m.card_id: m for m in breakdown}
         safety_ok = any(
             by.get(c.id) and by[c.id].status == "full"
@@ -185,7 +210,9 @@ class MockProvider(Provider):
             return f"안전 최상 ↔ {'·'.join(weak)} 아쉬움"
         return None
 
-    def _basis(self, cards, priority_order, listing) -> list[dict]:
+    def _basis(
+        self, cards: list[ConditionCard], priority_order: list[str], listing: Listing
+    ) -> list[dict]:
         colors = {"safety": "#F59E0B", "transit": "#4B7BF5", "commute": "#22C55E"}
         out = []
         for cat in (priority_order or ["safety"])[:3]:
@@ -193,7 +220,7 @@ class MockProvider(Provider):
             out.append({"category": label, "color": colors.get(cat, "#8B5CF6"), "detail": ""})
         return out
 
-    def _loc_scores(self, listing) -> list[dict]:
+    def _loc_scores(self, listing: Listing) -> list[dict]:
         wm = int(listing.geo.get("campus_walk_min", 15))
         return [
             {"label": "심야 귀가", "score": 90 if listing.geo.get("lit") else 60},

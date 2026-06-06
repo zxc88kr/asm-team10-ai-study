@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from app.data.seed import get_listing
+from app.data.seed import Listing, get_listing
 from app.events import emit
 from app.state import AgentState, differentiation_ratio
 
@@ -93,7 +93,7 @@ def _location_reply(state: AgentState) -> str:
     )
 
 
-def _detect_listing(text: str, state: AgentState):
+def _detect_listing(text: str, state: AgentState) -> Listing | None:
     for lid in ("A", "B", "C", "D"):
         if lid in text:
             try:

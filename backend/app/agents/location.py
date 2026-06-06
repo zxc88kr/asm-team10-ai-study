@@ -8,7 +8,7 @@ from __future__ import annotations
 from app.data.seed import get_listing
 from app.events import emit
 from app.providers import get_provider
-from app.state import AgentState
+from app.state import AgentState, ScoredListing
 
 
 def location_node(state: AgentState) -> dict:
@@ -27,7 +27,7 @@ def location_node(state: AgentState) -> dict:
     return {"location_analysis": cached}
 
 
-def _current_selection(state: AgentState, ranked) -> str:
+def _current_selection(state: AgentState, ranked: list[ScoredListing]) -> str:
     """직전 사용자 발화에서 선택된 매물, 없으면 TOP-1.
 
     참고: 선택이 없으면 interrupt(select_listing)로 물을 수도 있으나(오케스트레이션 §5),

@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from typing import Any
 
 from langgraph.types import Command
@@ -33,23 +33,24 @@ def has_pending_interrupt(session_id: str) -> bool:
     return bool(GRAPH.get_state(_config(session_id)).next)
 
 
-def _build_input(config: dict, user_text: str | None, resume: Any):
+def _build_input(config: dict, user_text: str | None, resume: Any) -> Command | dict[str, Any]:
     if resume is not None and bool(GRAPH.get_state(config).next):
         return Command(resume=resume)
-    inp = init_state() if _is_fresh(config) else {}
+    inp: dict[str, Any] = dict(init_state()) if _is_fresh(config) else {}
     inp["messages"] = [{"role": "user", "content": user_text or ""}]
     return inp
 
 
 def _interrupt_event(payload: Any) -> dict:
     item = payload[0] if isinstance(payload, (list, tuple)) else payload
-    value = dict(getattr(item, "value", item))
+    raw = getattr(item, "value", item)
+    value = dict(raw) if isinstance(raw, dict) else {}
     # value 자체에 "type"(discover_question/edit_priority/...)이 있으므로 questionType으로 보존.
     subtype = value.pop("type", None)
     return {"type": "question", "questionType": subtype, **value}
 
 
-def _iter_events(mode: str, chunk: Any):
+def _iter_events(mode: str, chunk: Any) -> Iterator[dict]:
     if mode == "custom":
         yield chunk
     elif mode == "updates":
