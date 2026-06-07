@@ -122,6 +122,28 @@ export interface ScenarioStep {
   recommend?: boolean
 }
 
+export interface AgentPropertyItem {
+  property_id: string
+  title: string
+  type: string
+  score: number
+  deposit: number
+  monthly_rent: number
+  location: string
+  address_detail: string
+  description: string
+  facilities: string[]
+  transit_walk_min: number
+  transit_station: string
+  soft_card_matches: { card: string; matched: boolean | 'partial'; evidence: string }[]
+  agent_mode: string
+}
+
+export interface AgentRecommendResponse {
+  session_id: string
+  top_properties: AgentPropertyItem[]
+}
+
 export interface AgentConditions {
   session_id: string
   hard_conditions: {

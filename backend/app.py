@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from agent import RoomConditionAgent, create_empty_conditions
+from agent import RoomConditionAgent, create_empty_conditions, ListingCurator
 
 
 DEFAULT_SESSION_ID = "default"
@@ -36,6 +36,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
     ],
@@ -93,3 +95,21 @@ def agent_reset(payload: AgentResetRequest) -> dict[str, Any]:
     _sessions[session_id] = RoomConditionAgent(use_solar=_use_solar(payload.use_solar))
     state = _sessions[session_id].reset()
     return _response(session_id, state)
+
+
+class RecommendRequest(BaseModel):
+    conditions: dict = Field(...)
+    session_id: str = DEFAULT_SESSION_ID
+    top_n: int = Field(default=3, ge=1, le=10)
+    use_solar: bool | None = None
+
+
+@app.post("/agent/recommend")
+def agent_recommend(payload: RecommendRequest) -> dict[str, Any]:
+    session_id = payload.session_id.strip() or DEFAULT_SESSION_ID
+    curator = ListingCurator(use_solar=_use_solar(payload.use_solar))
+    return curator.recommend(
+        conditions=payload.conditions,
+        session_id=session_id,
+        top_n=payload.top_n,
+    )

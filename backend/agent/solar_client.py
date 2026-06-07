@@ -207,6 +207,22 @@ def call_upstage_chat_json(
 
     return _parse_json_object(content)
 
+def call_upstage_chat_content(*, messages, api_key, model, timeout_seconds=20):
+    req = urllib.request.Request(
+        UPSTAGE_CHAT_COMPLETIONS_URL,
+        data=json.dumps({
+            "model": model,
+            "messages": messages,
+            "temperature": 0.1,
+            "max_tokens": 1200,
+        }).encode(),
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        method="POST",
+    )
+
+    return json.loads(
+        urllib.request.urlopen(req, timeout=timeout_seconds).read()
+    )["choices"][0]["message"]["content"]
 
 def call_upstage_json(
     *,

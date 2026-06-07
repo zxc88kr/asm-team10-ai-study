@@ -1,74 +1,85 @@
+import { useEffect, useRef } from 'react'
 import useAppStore, { scoreClass } from '../store/useAppStore'
 import { LISTINGS } from '../data/listings'
 import ConditionSummary from './ConditionSummary'
 
-function MapSvg() {
-  return (
-    <div className="map-placeholder">
-      <svg className="map-svg" viewBox="0 0 300 160" xmlns="http://www.w3.org/2000/svg">
-        <rect width="300" height="160" fill="#E8F0FE" />
-        {/* 도로 */}
-        <line x1="0" y1="80" x2="300" y2="80" stroke="#C5D3F0" strokeWidth="8" />
-        <line x1="150" y1="0" x2="150" y2="160" stroke="#C5D3F0" strokeWidth="6" />
-        <line x1="50" y1="0" x2="50" y2="160" stroke="#D8E4FA" strokeWidth="3" />
-        <line x1="240" y1="0" x2="240" y2="160" stroke="#D8E4FA" strokeWidth="3" />
-        <line x1="0" y1="40" x2="300" y2="40" stroke="#D8E4FA" strokeWidth="3" />
-        <line x1="0" y1="120" x2="300" y2="120" stroke="#D8E4FA" strokeWidth="3" />
+declare global {
+  interface Window {
+    kakao: {
+      maps: {
+        load: (cb: () => void) => void
+        Map: new (el: HTMLElement, opts: { center: unknown; level: number }) => unknown
+        LatLng: new (lat: number, lng: number) => unknown
+        Marker: new (opts: { position: unknown; map?: unknown }) => unknown
+        InfoWindow: new (opts: { content: string; removable?: boolean }) => {
+          open: (map: unknown, marker: unknown) => void
+        }
+      }
+    }
+  }
+}
 
-        {/* 귀가 동선 (집 → 역) */}
-        <path d="M 80 100 L 80 80 L 150 80" stroke="#4B7BF5" strokeWidth="2" strokeDasharray="5,3" fill="none" />
-        {/* 출근 동선 (역 → 회사) */}
-        <path d="M 150 80 L 240 80 L 240 50" stroke="#22C55E" strokeWidth="2" strokeDasharray="5,3" fill="none" />
+interface KakaoMapProps {
+  lat: number | null | undefined
+  lng: number | null | undefined
+  title: string
+}
 
-        {/* 집 */}
-        <circle cx="80" cy="100" r="9" fill="#4B7BF5" />
-        <text x="80" y="104" textAnchor="middle" fill="white" fontSize="9" fontWeight="bold">집</text>
-        <text x="80" y="118" textAnchor="middle" fill="#4B7BF5" fontSize="9" fontWeight="600">집</text>
+function KakaoMap({ lat, lng, title }: KakaoMapProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const apiKey = import.meta.env.VITE_KAKAO_MAP_KEY as string | undefined
 
-        {/* 선릉역 */}
-        <circle cx="150" cy="80" r="9" fill="#22C55E" />
-        <text x="150" y="84" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">역</text>
-        <text x="150" y="99" textAnchor="middle" fill="#22C55E" fontSize="9" fontWeight="600">선릉역</text>
+  useEffect(() => {
+    if (!apiKey || !lat || !lng || !containerRef.current) return
 
-        {/* 강남역(회사) */}
-        <circle cx="240" cy="50" r="9" fill="#F59E0B" />
-        <text x="240" y="54" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">회</text>
-        <text x="240" y="69" textAnchor="middle" fill="#F59E0B" fontSize="9" fontWeight="600">강남역</text>
+    const initMap = () => {
+      if (!containerRef.current) return
+      const center = new window.kakao.maps.LatLng(lat, lng)
+      const map = new window.kakao.maps.Map(containerRef.current, { center, level: 4 })
+      const marker = new window.kakao.maps.Marker({ position: center, map })
+      const info = new window.kakao.maps.InfoWindow({
+        content: `<div style="padding:4px 8px;font-size:12px;white-space:nowrap;">${title}</div>`,
+        removable: true,
+      })
+      info.open(map, marker)
+    }
 
-        {/* 편의시설 */}
-        <circle cx="60" cy="60" r="5" fill="#8B5CF6" opacity="0.7" />
-        <circle cx="110" cy="115" r="5" fill="#8B5CF6" opacity="0.7" />
-        <circle cx="180" cy="50" r="5" fill="#8B5CF6" opacity="0.7" />
+    if (window.kakao?.maps) {
+      window.kakao.maps.load(initMap)
+      return
+    }
 
-        {/* 범례 */}
-        <rect x="5" y="130" width="290" height="26" fill="white" opacity="0.8" rx="4" />
-        <circle cx="16" cy="143" r="4" fill="#4B7BF5" />
-        <text x="23" y="147" fill="#4A5568" fontSize="8">집</text>
-        <circle cx="46" cy="143" r="4" fill="#22C55E" />
-        <text x="53" y="147" fill="#4A5568" fontSize="8">역(선릉역)</text>
-        <circle cx="100" cy="143" r="4" fill="#F59E0B" />
-        <text x="107" y="147" fill="#4A5568" fontSize="8">회사(강남역)</text>
-        <line x1="163" y1="143" x2="175" y2="143" stroke="#4B7BF5" strokeWidth="1.5" strokeDasharray="3,2" />
-        <text x="178" y="147" fill="#4A5568" fontSize="8">추천 동선</text>
-        <line x1="218" y1="143" x2="230" y2="143" stroke="#22C55E" strokeWidth="1.5" strokeDasharray="3,2" />
-        <text x="233" y="147" fill="#4A5568" fontSize="8">귀가 동선</text>
+    const script = document.createElement('script')
+    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&autoload=false`
+    script.onload = () => window.kakao.maps.load(initMap)
+    document.head.appendChild(script)
+  }, [lat, lng, title, apiKey])
 
-        {/* 500m 스케일 */}
-        <line x1="230" y1="125" x2="270" y2="125" stroke="#9AA3B2" strokeWidth="1.5" />
-        <text x="250" y="120" textAnchor="middle" fill="#9AA3B2" fontSize="8">500m</text>
+  if (!apiKey) {
+    return (
+      <div className="map-placeholder" style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        justifyContent: 'center', height: 160, background: '#E8F0FE',
+        borderRadius: 8, gap: 6, color: '#718096', fontSize: 12,
+      }}>
+        <span style={{ fontSize: 24 }}>🗺️</span>
+        <span>카카오맵 API 키를 설정하면 지도가 표시됩니다</span>
+        <code style={{ fontSize: 10, color: '#A0AEC0' }}>VITE_KAKAO_MAP_KEY=발급받은키</code>
+      </div>
+    )
+  }
 
-        {/* 편의시설 마커 라벨 */}
-        <circle cx="60" cy="60" r="5" fill="#14B8A6" opacity="0.8" />
-        <text x="68" y="63" fill="#14B8A6" fontSize="8">+편의</text>
-      </svg>
-    </div>
-  )
+  return <div ref={containerRef} style={{ width: '100%', height: 160, borderRadius: 8 }} />
 }
 
 export default function AnalysisRightPanel() {
-  const { lastTop, selectedListingId, openAnalysis } = useAppStore()
+  const { lastTop, selectedListingId, openAnalysis, agentListings } = useAppStore()
 
-  const selectedListing = LISTINGS.find(l => l.id === selectedListingId) ?? LISTINGS[0]
+  const selectedListing =
+    agentListings.find(l => l.id === selectedListingId) ??
+    LISTINGS.find(l => l.id === selectedListingId) ??
+    agentListings[0] ??
+    LISTINGS[0]
   const analysis = selectedListing.locationAnalysis
   const score = lastTop?.find(sl => sl.L.id === selectedListing.id)?.score ?? 86
 
@@ -77,10 +88,8 @@ export default function AnalysisRightPanel() {
 
   return (
     <div className="analysis-panels">
-      {/* 내 조건 요약 */}
       <ConditionSummary showEdit />
 
-      {/* TOP3 비교 */}
       <div className="card">
         <div className="card-head">
           <h2>TOP 3 비교</h2>
@@ -100,7 +109,7 @@ export default function AnalysisRightPanel() {
               <div className="compare-body">
                 <div className="compare-name">{sl.L.name}</div>
                 <div className="compare-meta">
-                  출퇴근 {sl.L.commuteMin}분 · 월 {sl.L.rent}만 원
+                  역 {sl.L.commuteMin}분 · 월 {sl.L.rent}만 원
                 </div>
               </div>
               <div className={`compare-score ${scoreClass(sl.score)}`}>{sl.score}</div>
@@ -109,28 +118,17 @@ export default function AnalysisRightPanel() {
         </div>
       </div>
 
-      {/* 주변 동선 지도 */}
       <div className="card">
         <div className="card-head">
           <h2>주변 동선 지도</h2>
         </div>
-        <MapSvg />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8 }}>
-          {[
-            { color: '#4B7BF5', label: '집' },
-            { color: '#22C55E', label: '역(선릉역)' },
-            { color: '#F59E0B', label: '회사(강남역)' },
-            { color: '#8B5CF6', label: '편의시설' },
-          ].map(item => (
-            <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--ink-2)' }}>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: item.color, flex: 'none' }} />
-              {item.label}
-            </div>
-          ))}
-        </div>
+        <KakaoMap
+          lat={selectedListing.lat}
+          lng={selectedListing.lng}
+          title={selectedListing.name}
+        />
       </div>
 
-      {/* 종합 판단 */}
       <div className="card">
         <div className="card-head">
           <h2>종합 판단</h2>
@@ -154,21 +152,27 @@ export default function AnalysisRightPanel() {
             </div>
           </div>
           <div className="score-level">
-            <b>매우 높음</b>
+            <b>{score >= 85 ? '매우 높음' : score >= 75 ? '높음' : '보통'}</b>
             {selectedListing.name}
           </div>
         </div>
-        <div className="score-bars">
-          {analysis.scoreBreakdown.map(item => (
-            <div key={item.label} className="score-bar-row">
-              <span className="score-bar-label">{item.label}</span>
-              <div className="score-bar-track">
-                <div className="score-bar-fill" style={{ width: `${item.score}%` }} />
+        {analysis.scoreBreakdown.length > 0 ? (
+          <div className="score-bars">
+            {analysis.scoreBreakdown.map(item => (
+              <div key={item.label} className="score-bar-row">
+                <span className="score-bar-label">{item.label}</span>
+                <div className="score-bar-track">
+                  <div className="score-bar-fill" style={{ width: `${item.score}%` }} />
+                </div>
+                <span className="score-bar-num">{item.score}</span>
               </div>
-              <span className="score-bar-num">{item.score}</span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <p style={{ fontSize: 12, color: 'var(--muted)', marginTop: 8 }}>
+            매물을 선택하면 항목별 점수가 표시됩니다.
+          </p>
+        )}
       </div>
     </div>
   )
