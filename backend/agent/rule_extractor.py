@@ -31,6 +31,10 @@ def _find_keywords(text: str, keywords: list[str]) -> list[str]:
     return [keyword for keyword in keywords if keyword in text]
 
 
+def _generic_facility_intent(text: str) -> bool:
+    return bool(re.search(r"편의\s*시설|편의시설|주변에\s*많", text))
+
+
 def _station_names(text: str) -> list[str]:
     return list(dict.fromkeys(re.findall(r"[가-힣A-Za-z0-9]+역", text)))
 
@@ -55,6 +59,10 @@ def _avoid_intent(text: str) -> bool:
 
 def _required_intent(text: str) -> bool:
     return bool(re.search(r"필수|꼭|반드시|있어야|가까워야|원해", text))
+
+
+def _no_more_soft_intent(text: str) -> bool:
+    return bool(re.search(r"^(그리곤\s*)?(더\s*)?(없어|없어요|없습니다)$|그 외엔 없어|그 외에는 없어", text))
 
 
 def apply_rule_extraction(state: ConditionState, user_message: str) -> ConditionState:
@@ -87,6 +95,9 @@ def apply_rule_extraction(state: ConditionState, user_message: str) -> Condition
         rent["includes_management_fee"] = True
 
     facilities = _find_keywords(text, FACILITY_KEYWORDS)
+    if _generic_facility_intent(text):
+        facilities = merge_unique(facilities, ["편의 시설"])
+
     if facilities:
         target = "required" if _required_intent(text) else "preferred"
         soft["convenience_facilities"][target] = merge_unique(soft["convenience_facilities"][target], facilities)
@@ -116,13 +127,14 @@ def apply_rule_extraction(state: ConditionState, user_message: str) -> Condition
             commute_minutes is not None,
             rent_manwon is not None,
             facilities,
+            _generic_facility_intent(text),
             options,
             _find_keywords(text, PEST_KEYWORDS),
             _find_keywords(text, MOLD_KEYWORDS),
             "반지하" in text,
         ]
     )
-    if text and not known_signal:
+    if text and (not known_signal or _no_more_soft_intent(text)):
         soft["extra_notes"] = merge_unique(soft["extra_notes"], [text])
 
     return update_missing_and_question(next_state)
