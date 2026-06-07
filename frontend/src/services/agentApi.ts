@@ -25,7 +25,7 @@ export function postRecommend(
   sessionId: string,
   topN = 3,
 ): Promise<AgentRecommendResponse> {
-  return request<AgentRecommendResponse>('/agent2/recommend', {
+  return request<AgentRecommendResponse>('/agent/recommend', {
     conditions,
     session_id: sessionId,
     top_n: topN,

@@ -96,7 +96,7 @@ const CONV_KEYWORDS: Array<{ keyword: string; name: string; icon: string; defaul
   { keyword: '병원', name: '병원', icon: 'hospital', defaultMin: 10 },
 ]
 
-function agent2ToLocationAnalysis(item: AgentPropertyItem): LocationAnalysis {
+function agentToLocationAnalysis(item: AgentPropertyItem): LocationAnalysis {
   const combined = item.description + ' ' + item.address_detail
 
   const extractMin = (keyword: string, fallback: number): number => {
@@ -153,7 +153,7 @@ function agent2ToLocationAnalysis(item: AgentPropertyItem): LocationAnalysis {
   return { commute, nightSafety, convenience, basis, pros, cons, aiComment, scoreBreakdown }
 }
 
-function agent2ToScoredListing(item: AgentPropertyItem): ScoredListing {
+function agentToScoredListing(item: AgentPropertyItem): ScoredListing {
   const matchToStatus = (matched: boolean | 'partial'): Status =>
     matched === true ? 'full' : matched === 'partial' ? 'partial' : 'none'
 
@@ -172,7 +172,7 @@ function agent2ToScoredListing(item: AgentPropertyItem): ScoredListing {
     nightTransit: 'ok',
     thumb: THUMB_MAP[item.type] ?? '🏠',
     desc: item.description,
-    locationAnalysis: agent2ToLocationAnalysis(item),
+    locationAnalysis: agentToLocationAnalysis(item),
     lat: item.lat ?? undefined,
     lng: item.lng ?? undefined,
   }
@@ -308,7 +308,7 @@ const useAppStore = create<AppState>((set, get) => ({
     }))
 
     void postRecommend(agentConditions, sessionId).then(response => {
-      const top = response.top_properties.map(agent2ToScoredListing)
+      const top = response.top_properties.map(agentToScoredListing)
       set(s => ({
         messages: [
           ...s.messages.filter(m => !m.searching),

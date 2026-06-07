@@ -104,8 +104,8 @@ class RecommendRequest(BaseModel):
     use_solar: bool | None = None
 
 
-@app.post("/agent2/recommend")
-def agent2_recommend(payload: RecommendRequest) -> dict[str, Any]:
+@app.post("/agent/recommend")
+def agent_recommend(payload: RecommendRequest) -> dict[str, Any]:
     session_id = payload.session_id.strip() or DEFAULT_SESSION_ID
     curator = ListingCurator(use_solar=_use_solar(payload.use_solar))
     return curator.recommend(
