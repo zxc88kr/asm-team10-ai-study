@@ -142,6 +142,7 @@ export interface AgentPropertyItem {
 export interface AgentRecommendResponse {
   session_id: string
   top_properties: AgentPropertyItem[]
+  agent_logs?: string[]
 }
 
 export interface AgentConditions {
@@ -187,4 +188,5 @@ export interface AgentConditions {
   next_question: string
   is_complete?: boolean
   next_action?: 'ask_required_conditions' | 'ask_soft_conditions' | 'recommend_listings'
+  agent_logs?: string[]
 }

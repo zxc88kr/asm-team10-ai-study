@@ -1,76 +1,6 @@
-import { useEffect, useRef } from 'react'
 import useAppStore, { scoreClass } from '../store/useAppStore'
 import { LISTINGS } from '../data/listings'
 import ConditionSummary from './ConditionSummary'
-
-declare global {
-  interface Window {
-    kakao: {
-      maps: {
-        load: (cb: () => void) => void
-        Map: new (el: HTMLElement, opts: { center: unknown; level: number }) => unknown
-        LatLng: new (lat: number, lng: number) => unknown
-        Marker: new (opts: { position: unknown; map?: unknown }) => unknown
-        InfoWindow: new (opts: { content: string; removable?: boolean }) => {
-          open: (map: unknown, marker: unknown) => void
-        }
-      }
-    }
-  }
-}
-
-interface KakaoMapProps {
-  lat: number | null | undefined
-  lng: number | null | undefined
-  title: string
-}
-
-function KakaoMap({ lat, lng, title }: KakaoMapProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const apiKey = import.meta.env.VITE_KAKAO_MAP_KEY as string | undefined
-
-  useEffect(() => {
-    if (!apiKey || !lat || !lng || !containerRef.current) return
-
-    const initMap = () => {
-      if (!containerRef.current) return
-      const center = new window.kakao.maps.LatLng(lat, lng)
-      const map = new window.kakao.maps.Map(containerRef.current, { center, level: 4 })
-      const marker = new window.kakao.maps.Marker({ position: center, map })
-      const info = new window.kakao.maps.InfoWindow({
-        content: `<div style="padding:4px 8px;font-size:12px;white-space:nowrap;">${title}</div>`,
-        removable: true,
-      })
-      info.open(map, marker)
-    }
-
-    if (window.kakao?.maps) {
-      window.kakao.maps.load(initMap)
-      return
-    }
-
-    const script = document.createElement('script')
-    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&autoload=false`
-    script.onload = () => window.kakao.maps.load(initMap)
-    document.head.appendChild(script)
-  }, [lat, lng, title, apiKey])
-
-  if (!apiKey) {
-    return (
-      <div className="map-placeholder" style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        justifyContent: 'center', height: 160, background: '#E8F0FE',
-        borderRadius: 8, gap: 6, color: '#718096', fontSize: 12,
-      }}>
-        <span style={{ fontSize: 24 }}>🗺️</span>
-        <span>카카오맵 API 키를 설정하면 지도가 표시됩니다</span>
-        <code style={{ fontSize: 10, color: '#A0AEC0' }}>VITE_KAKAO_MAP_KEY=발급받은키</code>
-      </div>
-    )
-  }
-
-  return <div ref={containerRef} style={{ width: '100%', height: 160, borderRadius: 8 }} />
-}
 
 export default function AnalysisRightPanel() {
   const { lastTop, selectedListingId, openAnalysis, agentListings } = useAppStore()
@@ -116,17 +46,6 @@ export default function AnalysisRightPanel() {
             </div>
           ))}
         </div>
-      </div>
-
-      <div className="card">
-        <div className="card-head">
-          <h2>주변 동선 지도</h2>
-        </div>
-        <KakaoMap
-          lat={selectedListing.lat}
-          lng={selectedListing.lng}
-          title={selectedListing.name}
-        />
       </div>
 
       <div className="card">

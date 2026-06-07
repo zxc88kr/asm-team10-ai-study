@@ -206,6 +206,7 @@ interface AppState {
   conditionsComplete: boolean
   agentConditions: AgentConditions | null
   agentListings: Listing[]
+  agentLogs: string[]
   advance: (displayText?: string) => void
   sendMessage: (text: string) => void
   runRecommendation: (advanceSteps: boolean) => void
@@ -233,12 +234,17 @@ const useAppStore = create<AppState>((set, get) => ({
   conditionsComplete: false,
   agentConditions: null,
   agentListings: [],
+  agentLogs: ['대기 중: 유저 메시지를 기다리는 중'],
 
   advance(displayText?: string) {
     const msg = (displayText ?? '').trim()
     if (!msg) return
 
-    set(s => ({ messages: [...s.messages, { role: 'user', text: msg }], isTyping: true }))
+    set(s => ({
+      messages: [...s.messages, { role: 'user', text: msg }],
+      isTyping: true,
+      agentLogs: ['유저 메시지 수신', '조건 추출 API 요청 중'],
+    }))
 
     void postMessage(msg, get().sessionId).then(result => {
       const { monthly_rent, location_transport } = result.hard_conditions
@@ -261,6 +267,7 @@ const useAppStore = create<AppState>((set, get) => ({
           isTyping: false,
           agentConditions: result,
           conditionsComplete: result.missing_required_conditions.length === 0,
+          agentLogs: result.agent_logs ?? [`agent_mode: ${result.agent_mode ?? 'unknown'}`, '조건 JSON 업데이트 완료'],
           messages: [...s.messages, { role: 'ai', text: result.next_question }],
         }
       })
@@ -305,6 +312,7 @@ const useAppStore = create<AppState>((set, get) => ({
         ...s.messages,
         { role: 'ai' as const, text: '조건에 맞는 매물을 검색하고 있어요...', searching: true },
       ],
+      agentLogs: ['추천 요청 수신', '매물 후보 점수 계산 중'],
     }))
 
     void postRecommend(agentConditions, sessionId).then(response => {
@@ -318,6 +326,7 @@ const useAppStore = create<AppState>((set, get) => ({
         agentListings: top.map(sl => sl.L),
         recommended: true,
         excludedCount: 0,
+        agentLogs: response.agent_logs ?? [`추천 매물 ${top.length}개 반환`],
       }))
       if (advanceSteps) {
         set({ currentStep: 2 })
@@ -352,6 +361,7 @@ const useAppStore = create<AppState>((set, get) => ({
       conditionsComplete: false,
       agentConditions: null,
       agentListings: [],
+      agentLogs: ['대기 중: 유저 메시지를 기다리는 중'],
     })
   },
 
