@@ -34,7 +34,7 @@ function getStepState(stepIdx: number, currentStep: number): 'done' | 'active' |
 }
 
 export default function Sidebar() {
-  const { currentStep, activeView, openAnalysis, closeAnalysis, lastTop, reset } = useAppStore()
+  const { currentStep, activeView, openAnalysis, closeAnalysis, lastTop } = useAppStore()
 
   const handleNavClick = (id: string) => {
     if (id === 'chat') closeAnalysis()
@@ -44,11 +44,6 @@ export default function Sidebar() {
   }
 
   const activeNavId = activeView === 'analysis' ? 'analysis' : 'chat'
-  const helpTitle = currentStep < 3 ? '첫 자취, 막막하신가요?' : '다음 단계는 무엇인가요?'
-  const helpDesc = currentStep < 3
-    ? 'AI 주거 코치가 끝까지 도와드릴게요.'
-    : '분석 결과를 바탕으로 최적의 선택을 도와드릴게요.'
-
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -93,16 +88,6 @@ export default function Sidebar() {
         </ul>
       </div>
 
-      <div className="sidebar-foot">
-        <div className="help-card">
-          <div className="help-icon"><Home size={28} /></div>
-          <div className="help-title">{helpTitle}</div>
-          <div className="help-desc">{helpDesc}</div>
-          <button className="help-btn" onClick={reset} type="button">
-            사용 가이드 보기 <span>›</span>
-          </button>
-        </div>
-      </div>
     </aside>
   )
 }

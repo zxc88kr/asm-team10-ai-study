@@ -124,6 +124,7 @@ interface AppState {
   agentConditions: AgentConditions | null
   agentListings: Listing[]
   advance: (displayText?: string) => void
+  sendMessage: (text: string) => void
   runRecommendation: (advanceSteps: boolean) => void
   updateRent: (value: number) => void
   reset: () => void
@@ -189,6 +190,10 @@ const useAppStore = create<AppState>((set, get) => ({
         }],
       }))
     })
+  },
+
+  sendMessage(text: string) {
+    get().advance(text)
   },
 
   runRecommendation(advanceSteps: boolean) {
