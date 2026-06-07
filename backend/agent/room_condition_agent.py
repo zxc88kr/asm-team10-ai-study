@@ -39,6 +39,27 @@ class RoomConditionAgent:
     def reset(self) -> ConditionState:
         self.state = create_empty_conditions()
         return deepcopy(self.state)
+    
+    def _deep_merge(self, base, new):
+        if isinstance(base, dict) and isinstance(new, dict):
+            merged = deepcopy(base)
+            for key, value in new.items():
+                if key in merged:
+                    merged[key] = self._deep_merge(merged[key], value)
+                else:
+                    merged[key] = deepcopy(value)
+            return merged
+
+        if isinstance(base, list) and isinstance(new, list):
+            result = list(base)
+            for item in new:
+                if item not in result:
+                    result.append(item)
+            return result
+
+        if new is None:
+            return deepcopy(base)
+        return deepcopy(new)
 
     def handle_message(self, user_message: str) -> ConditionState:
         if self.use_solar and (self.api_key or get_solar_api_key()):
@@ -82,7 +103,8 @@ class RoomConditionAgent:
                 ),
             },
         ]
-        next_state = call_upstage_json(prompt=prompt, messages=messages, api_key=self.api_key)
+        solar_state = call_upstage_json(prompt=prompt, messages=messages, api_key=self.api_key)
+        next_state = self._deep_merge(self.state, solar_state)
         next_state = apply_rule_extraction(next_state, user_message)
         next_state["agent_mode"] = "solar"
         return update_missing_and_question(next_state)
