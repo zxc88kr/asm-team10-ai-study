@@ -15,9 +15,13 @@ const LEG_ICON: Record<string, typeof Train> = {
 }
 
 export default function LocationAnalysisView() {
-  const { selectedListingId, closeAnalysis, lastTop, showToast } = useAppStore()
+  const { selectedListingId, closeAnalysis, lastTop, showToast, agentListings } = useAppStore()
 
-  const listing = LISTINGS.find(l => l.id === selectedListingId) ?? LISTINGS[0]
+  const listing =
+    agentListings.find(l => l.id === selectedListingId) ??
+    LISTINGS.find(l => l.id === selectedListingId) ??
+    agentListings[0] ??
+    LISTINGS[0]
   const scoredListing = lastTop?.find(sl => sl.L.id === listing.id)
   const score = scoredListing?.score ?? 86
   const analysis = listing.locationAnalysis

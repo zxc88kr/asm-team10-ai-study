@@ -69,6 +69,8 @@ export interface Listing {
   thumb: string
   desc: string
   locationAnalysis: LocationAnalysis
+  lat?: number
+  lng?: number
 }
 
 export interface MatchResult {
@@ -134,6 +136,9 @@ export interface AgentPropertyItem {
   description: string
   facilities: string[]
   transit_walk_min: number
+  transit_station: string
+  lat: number | null
+  lng: number | null
   soft_card_matches: { card: string; matched: boolean | 'partial'; evidence: string }[]
   agent_mode: string
 }

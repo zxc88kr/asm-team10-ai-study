@@ -28,6 +28,7 @@ MOCK_PROPERTIES: list[dict[str, Any]] = [
         ),
         "facilities": ["분리형주방", "복층", "에어컨", "세탁기", "냉장고", "CCTV"],
         "transit": {"station": "부산대역", "walk_min": 7},
+        "coords": {"lat": 35.2310, "lng": 129.0858},
     },
     {
         "id": "P002",
@@ -44,6 +45,7 @@ MOCK_PROPERTIES: list[dict[str, Any]] = [
         ),
         "facilities": ["에어컨", "세탁기", "냉장고"],
         "transit": {"station": "부산대역", "walk_min": 4},
+        "coords": {"lat": 35.2328, "lng": 129.0836},
     },
     {
         "id": "P003",
@@ -60,6 +62,7 @@ MOCK_PROPERTIES: list[dict[str, Any]] = [
         ),
         "facilities": ["에어컨", "세탁기", "냉장고", "전자레인지", "인덕션"],
         "transit": {"station": "온천장역", "walk_min": 6},
+        "coords": {"lat": 35.2085, "lng": 129.0772},
     },
     {
         "id": "P004",
@@ -77,6 +80,7 @@ MOCK_PROPERTIES: list[dict[str, Any]] = [
         ),
         "facilities": ["냉장고"],
         "transit": {"station": "부산대역", "walk_min": 10},
+        "coords": {"lat": 35.2298, "lng": 129.0871},
         "is_basement": True,
     },
     {
@@ -95,6 +99,7 @@ MOCK_PROPERTIES: list[dict[str, Any]] = [
         ),
         "facilities": ["에어컨", "세탁기", "냉장고"],
         "transit": {"station": "경성대·부경대역", "walk_min": 8},
+        "coords": {"lat": 35.1362, "lng": 129.1018},
     },
     {
         "id": "P006",
@@ -112,6 +117,7 @@ MOCK_PROPERTIES: list[dict[str, Any]] = [
         ),
         "facilities": ["냉장고"],
         "transit": {"station": "경성대·부경대역", "walk_min": 12},
+        "coords": {"lat": 35.1348, "lng": 129.1005},
     },
     {
         "id": "P007",
@@ -129,6 +135,7 @@ MOCK_PROPERTIES: list[dict[str, Any]] = [
         ),
         "facilities": ["분리형주방", "에어컨", "세탁기", "냉장고"],
         "transit": {"station": "온천장역", "walk_min": 9},
+        "coords": {"lat": 35.2063, "lng": 129.0788},
     },
     {
         "id": "P008",
@@ -145,6 +152,7 @@ MOCK_PROPERTIES: list[dict[str, Any]] = [
         ),
         "facilities": ["에어컨", "세탁기"],
         "transit": {"station": "부산대역", "walk_min": 15},
+        "coords": {"lat": 35.2287, "lng": 129.0882},
     },
 ]
 
@@ -403,6 +411,9 @@ def _build_result(
         "description": prop["description"],
         "facilities": prop["facilities"],
         "transit_walk_min": prop["transit"]["walk_min"],
+        "transit_station": prop["transit"]["station"],
+        "lat": prop.get("coords", {}).get("lat"),
+        "lng": prop.get("coords", {}).get("lng"),
         "soft_card_matches": card_matches,
         "agent_mode": agent_mode,
     }
