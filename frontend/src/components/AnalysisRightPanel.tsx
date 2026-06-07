@@ -66,9 +66,13 @@ function MapSvg() {
 }
 
 export default function AnalysisRightPanel() {
-  const { lastTop, selectedListingId, openAnalysis } = useAppStore()
+  const { lastTop, selectedListingId, openAnalysis, agentListings } = useAppStore()
 
-  const selectedListing = LISTINGS.find(l => l.id === selectedListingId) ?? LISTINGS[0]
+  const selectedListing =
+    agentListings.find(l => l.id === selectedListingId) ??
+    LISTINGS.find(l => l.id === selectedListingId) ??
+    agentListings[0] ??
+    LISTINGS[0]
   const analysis = selectedListing.locationAnalysis
   const score = lastTop?.find(sl => sl.L.id === selectedListing.id)?.score ?? 86
 

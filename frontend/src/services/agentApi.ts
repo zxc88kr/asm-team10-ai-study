@@ -1,4 +1,4 @@
-import type { AgentConditions } from '../types'
+import type { AgentConditions, AgentRecommendResponse } from '../types'
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:8000'
 
@@ -18,4 +18,17 @@ export function postMessage(message: string, sessionId: string): Promise<AgentCo
 
 export function postReset(sessionId: string): Promise<AgentConditions> {
   return request<AgentConditions>('/agent/reset', { session_id: sessionId })
+}
+
+export function postRecommend(
+  conditions: AgentConditions,
+  sessionId: string,
+  topN = 3,
+): Promise<AgentRecommendResponse> {
+  return request<AgentRecommendResponse>('/agent2/recommend', {
+    conditions,
+    session_id: sessionId,
+    top_n: topN,
+    use_solar: true,
+  })
 }

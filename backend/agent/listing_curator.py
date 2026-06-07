@@ -8,7 +8,7 @@ from copy import deepcopy
 from typing import Any
 
 from .schema import ConditionState
-from .solar_client import SolarClientError, call_upstage_chat_json, get_solar_api_key
+from .solar_client import SolarClientError, call_upstage_chat_content, get_solar_api_key
 
 
 MOCK_PROPERTIES: list[dict[str, Any]] = [
@@ -378,12 +378,8 @@ def _score_solar(
         {"role": "system", "content": _CURATOR_SYSTEM_PROMPT},
         {"role": "user", "content": user_message},
     ]
-    raw = call_upstage_chat_json(messages=messages, api_key=api_key)
-    content = raw if isinstance(raw, str) else json.dumps(raw, ensure_ascii=False)
-    if isinstance(raw, dict) and "pests" in raw:
-        llm_result = raw
-    else:
-        llm_result = _parse_curator_json(content)
+    content = call_upstage_chat_content(messages=messages, api_key=api_key)
+    llm_result = _parse_curator_json(content)
     score, card_matches = _score_from_llm_output(llm_result)
     return score, card_matches, "solar"
 
@@ -397,6 +393,7 @@ def _build_result(
     return {
         "property_id": prop["id"],
         "title": prop["title"],
+        "type": prop["type"],
         "score": score,
         "hard_filter_passed": True,
         "deposit": prop["deposit"],
@@ -405,6 +402,7 @@ def _build_result(
         "address_detail": prop["address_detail"],
         "description": prop["description"],
         "facilities": prop["facilities"],
+        "transit_walk_min": prop["transit"]["walk_min"],
         "soft_card_matches": card_matches,
         "agent_mode": agent_mode,
     }

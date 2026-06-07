@@ -2,8 +2,19 @@ import { create } from 'zustand'
 import { GREETING } from '../data/scenario'
 import { CONDITION_CARDS } from '../data/conditions'
 import { LISTINGS } from '../data/listings'
-import { postMessage } from '../services/agentApi'
-import type { Listing, HardConstraints, Message, ScoredListing, Status, BreakdownItem, ActiveView } from '../types'
+import { postMessage, postRecommend } from '../services/agentApi'
+import type {
+  Listing,
+  HardConstraints,
+  Message,
+  ScoredListing,
+  Status,
+  BreakdownItem,
+  ActiveView,
+  AgentConditions,
+  AgentPropertyItem,
+  LocationAnalysis,
+} from '../types'
 
 const RENT_ALLOWANCE = 5
 const STATUS_VAL: Record<Status, number> = { full: 1, partial: 0.5, none: 0 }
@@ -41,6 +52,60 @@ function scoreListing(L: Listing, hard: HardConstraints, cards: string[]): Score
   return { excluded: false, score, breakdown, penalty }
 }
 
+const DEFAULT_LOCATION_ANALYSIS: LocationAnalysis = {
+  commute: { legs: [], totalMinutes: 0, transfers: 0, mainNote: '위치 정보 준비 중' },
+  nightSafety: [],
+  convenience: [],
+  basis: [],
+  pros: [],
+  cons: [],
+  aiComment: '',
+  scoreBreakdown: [],
+}
+
+const THUMB_MAP: Record<string, string> = { '빌라': '🏠', '원룸': '🏡', '오피스텔': '🏢' }
+const CARD_LABELS: Record<string, string> = {
+  pests: '벌레 없음',
+  mold: '곰팡이 없음',
+  default_options: '기본 옵션',
+  convenience_facilities: '편의 시설',
+  extra_notes: '기타 조건',
+}
+
+function agent2ToScoredListing(item: AgentPropertyItem): ScoredListing {
+  const matchToStatus = (matched: boolean | 'partial'): Status =>
+    matched === true ? 'full' : matched === 'partial' ? 'partial' : 'none'
+
+  const listing: Listing = {
+    id: item.property_id,
+    name: item.title,
+    type: item.type,
+    area: item.location,
+    deposit: item.deposit,
+    rent: item.monthly_rent,
+    pyeong: 0,
+    floor: 1,
+    options: item.facilities,
+    commuteMin: item.transit_walk_min,
+    night: { lit: true, mainRoad: true, alleyM: 0 },
+    nightTransit: 'ok',
+    thumb: THUMB_MAP[item.type] ?? '🏠',
+    desc: item.description,
+    locationAnalysis: DEFAULT_LOCATION_ANALYSIS,
+  }
+
+  const breakdown: BreakdownItem[] = item.soft_card_matches.map(m => ({
+    cid: m.card,
+    label: CARD_LABELS[m.card] ?? m.card,
+    category: 'soft',
+    weight: 1,
+    status: matchToStatus(m.matched),
+    evidence: m.evidence,
+  }))
+
+  return { L: listing, excluded: false, score: item.score, breakdown, penalty: 0 }
+}
+
 interface AppState {
   turn: number
   hard: HardConstraints
@@ -56,6 +121,8 @@ interface AppState {
   toastMessage: string | null
   sessionId: string
   conditionsComplete: boolean
+  agentConditions: AgentConditions | null
+  agentListings: Listing[]
   advance: (displayText?: string) => void
   runRecommendation: (advanceSteps: boolean) => void
   updateRent: (value: number) => void
@@ -80,6 +147,8 @@ const useAppStore = create<AppState>((set, get) => ({
   toastMessage: null,
   sessionId: `session_${Date.now()}`,
   conditionsComplete: false,
+  agentConditions: null,
+  agentListings: [],
 
   advance(displayText?: string) {
     const msg = (displayText ?? '').trim()
@@ -106,6 +175,7 @@ const useAppStore = create<AppState>((set, get) => ({
           hard: newHard,
           cards: [...s.cards, ...addCards],
           isTyping: false,
+          agentConditions: result,
           conditionsComplete: result.missing_required_conditions.length === 0,
           messages: [...s.messages, { role: 'ai', text: result.next_question }],
         }
@@ -122,20 +192,53 @@ const useAppStore = create<AppState>((set, get) => ({
   },
 
   runRecommendation(advanceSteps: boolean) {
-    const { hard, cards } = get()
-    const scored = LISTINGS.map(L => ({ L, ...scoreListing(L, hard, cards) }))
-    const ok = scored
-      .filter((s): s is { L: Listing } & Extract<ScoreResult, { excluded: false }> => !s.excluded)
-      .sort((a, b) => b.score - a.score)
-    const top = ok.slice(0, 3)
-    const excluded = scored.length - ok.length
+    const { agentConditions, sessionId, hard, cards } = get()
 
-    set({ lastTop: top, recommended: true, excludedCount: excluded })
-
-    if (advanceSteps) {
-      set({ currentStep: 2 })
-      setTimeout(() => set({ currentStep: 3 }), 500)
+    const runLocal = () => {
+      const scored = LISTINGS.map(L => ({ L, ...scoreListing(L, hard, cards) }))
+      const ok = scored
+        .filter((s): s is { L: Listing } & Extract<ScoreResult, { excluded: false }> => !s.excluded)
+        .sort((a, b) => b.score - a.score)
+      const top = ok.slice(0, 3)
+      set({ lastTop: top, recommended: true, excludedCount: scored.length - ok.length })
+      if (advanceSteps) {
+        set({ currentStep: 2 })
+        setTimeout(() => set({ currentStep: 3 }), 500)
+      }
     }
+
+    if (!agentConditions) {
+      runLocal()
+      return
+    }
+
+    set(s => ({
+      messages: [
+        ...s.messages,
+        { role: 'ai' as const, text: '조건에 맞는 매물을 검색하고 있어요...', searching: true },
+      ],
+    }))
+
+    void postRecommend(agentConditions, sessionId).then(response => {
+      const top = response.top_properties.map(agent2ToScoredListing)
+      set(s => ({
+        messages: [
+          ...s.messages.filter(m => !m.searching),
+          { role: 'ai' as const, text: `맞춤 매물 TOP ${top.length}을 찾았어요. 우측에서 확인해보세요!` },
+        ],
+        lastTop: top,
+        agentListings: top.map(sl => sl.L),
+        recommended: true,
+        excludedCount: 0,
+      }))
+      if (advanceSteps) {
+        set({ currentStep: 2 })
+        setTimeout(() => set({ currentStep: 3 }), 500)
+      }
+    }).catch(() => {
+      set(s => ({ messages: s.messages.filter(m => !m.searching) }))
+      runLocal()
+    })
   },
 
   updateRent(value: number) {
@@ -159,6 +262,8 @@ const useAppStore = create<AppState>((set, get) => ({
       toastMessage: null,
       sessionId: `session_${Date.now()}`,
       conditionsComplete: false,
+      agentConditions: null,
+      agentListings: [],
     })
   },
 
