@@ -109,7 +109,7 @@ const useAppStore = create<AppState>((set, get) => ({
           hard: newHard,
           cards: [...s.cards, ...addCards],
           isTyping: false,
-          conditionsComplete: result.missing_required_conditions.length === 0,
+          conditionsComplete: result.is_complete ?? result.missing_required_conditions.length === 0,
           agentConditions: result,
           messages: [...s.messages, { role: 'ai', text: result.next_question }],
         }
