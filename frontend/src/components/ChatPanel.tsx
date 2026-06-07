@@ -17,12 +17,14 @@ export default function ChatPanel() {
   const [currentTime] = useState(formatTime)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const isComposingRef = useRef(false)
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
   }, [messages, isTyping])
 
   const handleSend = (text?: string) => {
+    if (isTyping) return
     const msg = text ?? inputVal.trim()
     if (!msg) return
     setInputVal('')
@@ -31,6 +33,10 @@ export default function ChatPanel() {
   }
 
   const handleKey = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.nativeEvent.isComposing || e.keyCode === 229 || isComposingRef.current) {
+      return
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
@@ -118,12 +124,14 @@ export default function ChatPanel() {
             value={inputVal}
             onChange={e => setInputVal(e.target.value)}
             onKeyDown={handleKey}
+            onCompositionStart={() => { isComposingRef.current = true }}
+            onCompositionEnd={() => { isComposingRef.current = false }}
           />
           <button
             className="send"
             onClick={() => handleSend()}
             type="button"
-            disabled={!inputVal.trim()}
+            disabled={!inputVal.trim() || isTyping}
             aria-label="보내기"
           >
             <Send size={16} />

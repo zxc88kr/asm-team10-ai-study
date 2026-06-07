@@ -185,4 +185,6 @@ export interface AgentConditions {
   }
   missing_required_conditions: string[]
   next_question: string
+  is_complete?: boolean
+  next_action?: 'ask_required_conditions' | 'ask_soft_conditions' | 'recommend_listings'
 }
