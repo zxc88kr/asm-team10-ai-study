@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import json
 import re
-import urllib.request
-import urllib.error
 from copy import deepcopy
 from typing import Any
 
