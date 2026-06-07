@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"/mnt/c/dev/2026 soma_ai2/asm-team10-ai-study/frontend\" && npm run lint --silent 2>&1 | head -20"
+            "command": "cd C:\\dev\\asm-team10-ai-study\\frontend && npm run lint --silent 2>&1 | head -20"
           }
         ]
       }
