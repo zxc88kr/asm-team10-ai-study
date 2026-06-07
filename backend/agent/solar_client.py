@@ -207,47 +207,22 @@ def call_upstage_chat_json(
 
     return _parse_json_object(content)
 
-
-def call_upstage_chat_content(
-    *,
-    messages: list[dict[str, str]],
-    api_key: str | None = None,
-    model: str = DEFAULT_UPSTAGE_CHAT_MODEL,
-    timeout_seconds: int = 20,
-) -> str:
-    """Returns raw message content string without domain-specific JSON parsing."""
-    key = api_key or get_solar_api_key()
-    if not key:
-        raise SolarClientError("Upstage API key is missing. Set UPSTAGE_API_KEY or SOLAR_API_KEY.")
-
-    payload = {
-        "model": model,
-        "messages": messages,
-        "temperature": 0.1,
-        "max_tokens": 1200,
-    }
-    request = urllib.request.Request(
+def call_upstage_chat_content(*, messages, api_key, model, timeout_seconds=20):
+    req = urllib.request.Request(
         UPSTAGE_CHAT_COMPLETIONS_URL,
-        data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {key}",
-            "Content-Type": "application/json",
-        },
+        data=json.dumps({
+            "model": model,
+            "messages": messages,
+            "temperature": 0.1,
+            "max_tokens": 1200,
+        }).encode(),
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
         method="POST",
     )
 
-    try:
-        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
-            raw = response.read().decode("utf-8")
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        raise SolarClientError(f"Upstage chat request failed: HTTP {exc.code} {detail}") from exc
-    except urllib.error.URLError as exc:
-        raise SolarClientError(f"Upstage chat request failed: {exc}") from exc
-
-    data = json.loads(raw)
-    return str(data["choices"][0]["message"]["content"])
-
+    return json.loads(
+        urllib.request.urlopen(req, timeout=timeout_seconds).read()
+    )["choices"][0]["message"]["content"]
 
 def call_upstage_json(
     *,
