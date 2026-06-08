@@ -85,17 +85,17 @@ class RoomConditionAgent:
             try:
                 state = self._handle_with_solar(user_message)
                 self.state = state
-                # LLM이 recommend_listings로 판단 → 자동으로 추천 실행
-                if state.get("next_action") == "recommend_listings":
-                    return self._auto_recommend(state)
-                return deepcopy(state)
             except SolarClientError:
                 self.state = apply_rule_extraction(self.state, user_message)
                 self.state["agent_mode"] = "rule_fallback"
-                return deepcopy(self.state)
+        else:
+            self.state = apply_rule_extraction(self.state, user_message)
+            self.state["agent_mode"] = "rule"
 
-        self.state = apply_rule_extraction(self.state, user_message)
-        self.state["agent_mode"] = "rule"
+        # Solar·규칙·폴백 모든 경로에서 recommend_listings 판단 시 자동 추천
+        # top_properties가 이미 있으면 재실행 생략 (중복 방지)
+        if self.state.get("next_action") == "recommend_listings" and not self.state.get("top_properties"):
+            self.state = self._auto_recommend(self.state)
         return deepcopy(self.state)
 
     def _handle_with_solar(self, user_message: str) -> ConditionState:
