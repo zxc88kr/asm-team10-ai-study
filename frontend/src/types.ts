@@ -122,6 +122,25 @@ export interface ScenarioStep {
   recommend?: boolean
 }
 
+export interface AgentCommuteLeg {
+  type: 'walk' | 'subway' | 'bus'
+  label: string
+  minutes: number
+}
+
+export interface AgentNightSafetyItem {
+  icon: string
+  label: string
+  detail: string
+  pass: boolean
+}
+
+export interface AgentConvenienceItem {
+  name: string
+  walk_min: number
+  icon: string
+}
+
 export interface AgentPropertyItem {
   property_id: string
   title: string
@@ -137,6 +156,12 @@ export interface AgentPropertyItem {
   transit_station: string
   soft_card_matches: { card: string; matched: boolean | 'partial'; evidence: string }[]
   agent_mode: string
+  lat?: number | null
+  lng?: number | null
+  commute_legs: AgentCommuteLeg[]
+  commute_total_minutes: number
+  night_safety: AgentNightSafetyItem[]
+  convenience: AgentConvenienceItem[]
 }
 
 export interface AgentRecommendResponse {
