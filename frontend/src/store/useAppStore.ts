@@ -258,16 +258,23 @@ const useAppStore = create<AppState>((set, get) => ({
       if (result.top_properties !== undefined) {
         if (result.top_properties.length > 0) {
           const top = result.top_properties.map(agentToScoredListing)
-          // 이미 추천 완료된 상태에서의 추가 입력 ("응" 등) → 안내 메시지만
-          if (get().recommended) {
+          const currentIds = (get().lastTop ?? []).map(sl => sl.L.id).join(',')
+          const newIds = top.map(sl => sl.L.id).join(',')
+          const isUpdated = get().recommended && newIds !== currentIds
+          const isRepeat = get().recommended && newIds === currentIds
+
+          if (isRepeat) {
             set(s => ({
               hard: newHard,
               cards: [...s.cards, ...addCards],
               isTyping: false,
               agentConditions: result,
-              messages: [...s.messages, { role: 'ai' as const, text: '매물을 이미 추천해드렸어요. 우측 패널에서 확인해보세요! 조건을 변경하고 싶으시면 말씀해주세요.' }],
+              messages: [...s.messages, { role: 'ai' as const, text: '현재 조건에 맞는 매물이 우측에 표시돼 있어요. 조건을 더 추가하거나 변경해보세요!' }],
             }))
           } else {
+            const aiText = isUpdated
+              ? `조건을 반영해 매물을 다시 찾았어요. TOP ${top.length}을 우측에서 확인해보세요!`
+              : `맞춤 매물 TOP ${top.length}을 찾았어요. 우측에서 확인해보세요!`
             set(s => ({
               hard: newHard,
               cards: [...s.cards, ...addCards],
@@ -281,10 +288,11 @@ const useAppStore = create<AppState>((set, get) => ({
               currentStep: 3,
               messages: [
                 ...s.messages,
-                { role: 'ai' as const, text: result.next_question },
-                { role: 'ai' as const, text: `맞춤 매물 TOP ${top.length}을 찾았어요. 우측에서 확인해보세요!` },
+                ...(isUpdated ? [] : [{ role: 'ai' as const, text: result.next_question }]),
+                { role: 'ai' as const, text: aiText },
               ],
-            }))}
+            }))
+          }
 
         } else {
           set(s => ({

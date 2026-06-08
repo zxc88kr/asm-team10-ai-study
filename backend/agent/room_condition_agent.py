@@ -93,8 +93,7 @@ class RoomConditionAgent:
             self.state["agent_mode"] = "rule"
 
         # Solar·규칙·폴백 모든 경로에서 recommend_listings 판단 시 자동 추천
-        # top_properties가 이미 있으면 재실행 생략 (중복 방지)
-        if self.state.get("next_action") == "recommend_listings" and not self.state.get("top_properties"):
+        if self.state.get("next_action") == "recommend_listings":
             self.state = self._auto_recommend(self.state)
         return deepcopy(self.state)
 
