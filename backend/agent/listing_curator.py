@@ -3,14 +3,15 @@ from __future__ import annotations
 import json
 import math
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from copy import deepcopy
 from typing import Any
 
 from .schema import ConditionState
 from .solar_client import SolarClientError, call_upstage_chat_content, get_solar_api_key
-from .mock_properties import MOCK_PROPERTIES as _MOCK_PROPERTIES_GENERATED
 
 
-MOCK_PROPERTIES: list[dict[str, Any]] = [  # kept for reference; replaced below
+MOCK_PROPERTIES: list[dict[str, Any]] = [
     # ── 강남구 (강남역 8-13분) ──────────────────────────────────────────────
     {
         "id": "P001",
@@ -880,12 +881,80 @@ MOCK_PROPERTIES: list[dict[str, Any]] = [  # kept for reference; replaced below
     },
 ]
 
-MOCK_PROPERTIES = _MOCK_PROPERTIES_GENERATED  # 100개 생성 데이터로 교체
-
-_CARD_MAX: dict[str, int] = {
-    "pests": 20, "mold": 20, "default_options": 15,
-    "convenience_facilities": 10, "extra_notes": 5,
+_SOFT_WEIGHTS = {
+    "pests": 20,
+    "mold": 20,
+    "default_options": 15,
+    "convenience_facilities": 10,
+    "extra_notes": 5,
 }
+# 소프트 조건 합계 70점 + 출퇴근 점수 최대 30점 = 100점 만점
+
+
+def _commute_score(prop: dict[str, Any]) -> int:
+    """출퇴근 시간 기반 점수 (최대 30점). 조건 미지정 시 주요 차별화 요소."""
+    minutes = prop.get("commute_total_minutes", prop["transit"]["walk_min"])
+    return max(0, 30 - minutes // 2)
+
+
+def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    radius_km = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlng = math.radians(lng2 - lng1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlng / 2) ** 2
+    c = 2 * math.asin(math.sqrt(a))
+    return radius_km * c
+
+
+def _commute_score_by_distance(km: float, walk_min: int) -> int:
+    """목적지-매물 직선거리 + 도보시간 기반 출퇴근 점수(30점 만점)."""
+    estimated_min = round(km * 4 + walk_min + 5)
+    return max(0, 30 - estimated_min // 2)
+
+
+def _get_destination_coords(
+    conditions: ConditionState,
+    api_key: str | None,
+) -> tuple[float, float] | tuple[None, None]:
+    loc = conditions["hard_conditions"]["location_transport"]
+    destination = ", ".join(loc.get("landmarks", []) + loc.get("areas", []))
+    if not destination:
+        return None, None
+
+    prompt = (
+        "다음 장소의 위도/경도를 JSON으로만 반환하세요."
+        f"\n장소: {destination}"
+        "\n형식: {\"lat\": 37.0000, \"lng\": 127.0000}"
+    )
+    try:
+        content = call_upstage_chat_content(
+            messages=[{"role": "user", "content": prompt}],
+            api_key=api_key,
+            timeout_seconds=15,
+        )
+        match = re.search(r'\{[^{}]*"lat"[^{}]*"lng"[^{}]*\}', content, re.DOTALL)
+        if not match:
+            return None, None
+        data = json.loads(match.group())
+        return float(data["lat"]), float(data["lng"])
+    except Exception:
+        return None, None
+
+_FACILITY_ALIASES: dict[str, list[str]] = {
+    "편의점": ["편의점"],
+    "마트": ["마트", "슈퍼"],
+    "병원": ["병원", "의원"],
+    "약국": ["약국"],
+    "카페": ["카페", "커피"],
+    "세탁소": ["세탁소"],
+    "헬스장": ["헬스장", "피트니스"],
+}
+
+_PEST_CLEAR = ["벌레 이력 없", "벌레 민원 없", "벌레 걱정 없", "해충 없", "벌레·곰팡이 없", "벌레·곰팡이 이력 없"]
+_PEST_BAD = ["벌레", "바퀴", "해충"]
+_MOLD_CLEAR = ["곰팡이 없", "곰팡이 이력 없", "도배·장판 교체", "도배 완료", "결로 없", "벌레·곰팡이 없"]
+_MOLD_BAD = ["곰팡이", "결로"]
+_MOLD_PARTIAL = ["습기"]
 
 
 def _apply_hard_filter(
@@ -894,6 +963,7 @@ def _apply_hard_filter(
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     max_rent: int | None = conditions["hard_conditions"]["monthly_rent"].get("max_manwon")
     avoid_basement: bool | None = conditions["soft_conditions"]["basement"].get("avoid")
+    max_commute: int | None = conditions["hard_conditions"]["location_transport"].get("commute_time_max_minutes")
 
     passed: list[dict[str, Any]] = []
     failed: list[dict[str, Any]] = []
@@ -905,6 +975,8 @@ def _apply_hard_filter(
             fail_reason = f"월세 {prop['monthly_rent']}만원 > 상한 {max_rent}만원"
         elif avoid_basement is True and prop.get("is_basement", False):
             fail_reason = "반지하 매물 (사용자 제외 요청)"
+        elif max_commute is not None and prop.get("commute_total_minutes", prop["transit"]["walk_min"]) > max_commute:
+            fail_reason = f"출퇴근 {prop.get('commute_total_minutes', prop['transit']['walk_min'])}분 > 상한 {max_commute}분"
 
         if fail_reason:
             failed.append({"property": prop, "reason": fail_reason})
@@ -914,74 +986,189 @@ def _apply_hard_filter(
     return passed, failed
 
 
+def _score_rule(
+    prop: dict[str, Any],
+    soft: dict[str, Any],
+) -> tuple[int, list[dict[str, Any]]]:
+    desc = prop["description"]
+    fac_str = " ".join(prop["facilities"])
+    combined = desc + " " + fac_str
 
+    score = 0
+    card_matches: list[dict[str, Any]] = []
 
-def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
-    R = 6371.0
-    dlat = math.radians(lat2 - lat1)
-    dlng = math.radians(lng2 - lng1)
-    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlng / 2) ** 2
-    return R * 2 * math.asin(math.sqrt(a))
-
-
-def _commute_score_by_distance(km: float, walk_min: int) -> tuple[int, int]:
-    """직선거리 기반 출퇴근 점수(30점 만점)와 예상 소요시간(분) 반환."""
-    estimated_min = round(km * 4 + walk_min + 5)
-    if km <= 2:
-        pts = 30
-    elif km <= 5:
-        pts = 22
-    elif km <= 10:
-        pts = 12
-    elif km <= 15:
-        pts = 5
+    # pests (25점)
+    weight = _SOFT_WEIGHTS["pests"]
+    if soft["pests"].get("avoid"):
+        if any(kw in combined for kw in _PEST_CLEAR):
+            pts, matched, evidence = weight, True, "설명에서 벌레 없음 확인"
+        elif any(kw in combined for kw in _PEST_BAD):
+            pts, matched, evidence = 0, False, "벌레/해충 관련 언급 있음"
+        else:
+            pts, matched, evidence = weight // 2, "partial", "벌레 관련 정보 없음 (중립)"
     else:
-        pts = 0
-    return pts, estimated_min
+        pts, matched, evidence = weight // 2, True, "조건 없음"
+    score += pts
+    card_matches.append({"card": "pests", "matched": matched, "evidence": evidence, "score": pts, "max_score": _SOFT_WEIGHTS["pests"]})
 
-
-def _commute_score_by_minutes(total_min: int) -> int:
-    """실제 소요시간 기반 출퇴근 점수(30점 만점) 반환 — rule fallback 전용."""
-    if total_min <= 10:
-        return 30
-    elif total_min <= 20:
-        return 22
-    elif total_min <= 30:
-        return 15
-    elif total_min <= 40:
-        return 8
+    # mold (20점)
+    weight = _SOFT_WEIGHTS["mold"]
+    if soft["mold"].get("avoid"):
+        if any(kw in combined for kw in _MOLD_CLEAR):
+            pts, matched, evidence = weight, True, "설명에서 곰팡이 없음 확인"
+        elif any(kw in combined for kw in _MOLD_BAD):
+            pts, matched, evidence = 0, False, "곰팡이/결로 관련 언급 있음"
+        elif any(kw in combined for kw in _MOLD_PARTIAL):
+            pts, matched, evidence = weight // 2, "partial", "습기 언급 있음"
+        else:
+            pts, matched, evidence = weight // 2, "partial", "곰팡이 관련 정보 없음 (중립)"
     else:
-        return 0
+        pts, matched, evidence = weight // 2, True, "조건 없음"
+    score += pts
+    card_matches.append({"card": "mold", "matched": matched, "evidence": evidence, "score": pts, "max_score": _SOFT_WEIGHTS["mold"]})
+
+    # default_options (15점)
+    weight = _SOFT_WEIGHTS["default_options"]
+    wanted = list({*soft["default_options"].get("preferred", []), *soft["default_options"].get("required", [])})
+    if wanted:
+        matched_opts = [opt for opt in wanted if opt in fac_str or opt in desc]
+        ratio = len(matched_opts) / len(wanted)
+        pts = round(ratio * weight)
+        matched = ratio >= 0.8
+        evidence = f"{len(matched_opts)}/{len(wanted)} 항목 포함: {', '.join(matched_opts) or '없음'}"
+    else:
+        pts, matched, evidence = weight // 2, True, "조건 없음"
+    score += pts
+    card_matches.append({"card": "default_options", "matched": matched, "evidence": evidence, "score": pts, "max_score": _SOFT_WEIGHTS["default_options"]})
+
+    # convenience_facilities (10점)
+    weight = _SOFT_WEIGHTS["convenience_facilities"]
+    wanted_fac = list({
+        *soft["convenience_facilities"].get("preferred", []),
+        *soft["convenience_facilities"].get("required", []),
+    })
+    if wanted_fac:
+        matched_fac = [
+            fac for fac in wanted_fac
+            if any(alias in combined for alias in _FACILITY_ALIASES.get(fac, [fac]))
+        ]
+        ratio = len(matched_fac) / len(wanted_fac)
+        pts = round(ratio * weight)
+        matched = ratio >= 0.7
+        evidence = f"편의시설 {len(matched_fac)}/{len(wanted_fac)} 확인: {', '.join(matched_fac) or '없음'}"
+    else:
+        pts, matched, evidence = weight // 2, True, "조건 없음"
+    score += pts
+    card_matches.append({"card": "convenience_facilities", "matched": matched, "evidence": evidence, "score": pts, "max_score": _SOFT_WEIGHTS["convenience_facilities"]})
+
+    # extra_notes (5점)
+    weight = _SOFT_WEIGHTS["extra_notes"]
+    extra_notes: list[str] = soft.get("extra_notes", [])
+    if extra_notes:
+        note_text = " ".join(extra_notes)
+        note_words = {w for w in re.findall(r"[가-힣]{2,}", note_text)}
+        desc_words = {w for w in re.findall(r"[가-힣]{2,}", combined)}
+        overlap = note_words & desc_words
+        if len(overlap) >= 2:
+            pts, matched, evidence = weight, True, f"키워드 매칭: {', '.join(list(overlap)[:3])}"
+        elif len(overlap) == 1:
+            pts, matched, evidence = weight // 2, "partial", f"키워드 부분 매칭: {list(overlap)[0]}"
+        else:
+            pts, matched, evidence = 0, False, "추가 요구사항 키워드 미발견"
+    else:
+        pts, matched, evidence = weight // 2, True, "추가 요구사항 없음"
+    score += pts
+    card_matches.append({"card": "extra_notes", "matched": matched, "evidence": evidence, "score": pts, "max_score": _SOFT_WEIGHTS["extra_notes"]})
+
+    return score, card_matches
 
 
-def _get_destination_coords(
-    conditions: ConditionState,
-    api_key: str | None = None,
-) -> tuple[float, float] | tuple[None, None]:
-    """Solar에게 목적지 이름 → 위도/경도 변환 요청. 실패 시 (None, None) 반환."""
-    loc = conditions["hard_conditions"]["location_transport"]
-    destination = ", ".join(loc.get("landmarks", []) + loc.get("areas", []))
-    if not destination:
-        return None, None
+_CURATOR_SYSTEM_PROMPT = """
+너는 부동산 매물 평가 전문가다. 소프트 조건 카드와 매물 설명을 읽고 각 카드 충족 여부를 JSON으로만 반환한다.
+추가 설명 없이 JSON 객체만 반환한다.
 
-    prompt = (
-        f'다음 장소의 위도와 경도를 JSON으로만 반환하세요. 추가 설명 없이 JSON만.\n'
-        f'장소: {destination}\n'
-        f'형식: {{"lat": 37.0000, "lng": 127.0000}}'
-    )
+출력 형태:
+{
+  "pests": {"matched": true, "evidence": "근거 한 문장"},
+  "mold": {"matched": true, "evidence": "근거 한 문장"},
+  "default_options": {"matched": true, "evidence": "근거 한 문장"},
+  "convenience_facilities": {"matched": "partial", "evidence": "근거 한 문장"},
+  "extra_notes": {"matched": false, "evidence": "근거 한 문장"}
+}
+
+규칙:
+- matched=true: 설명·시설에서 명확히 충족 확인
+- matched="partial": 일부 충족 또는 정보 불명확
+- matched=false: 미충족 또는 부정적 언급
+- evidence: 매물 설명 직접 인용 또는 "정보 없음"
+- pests.avoid=true일 때: 벌레/해충 부정적 언급 없고 "벌레 없음" 등 긍정 표현이 있으면 true
+- mold.avoid=true일 때: 곰팡이/습기/결로 언급 없이 "곰팡이 없음/도배 완료" 등이 있으면 true
+- default_options: preferred/required 항목이 facilities 또는 설명에 포함되면 true
+- convenience_facilities: preferred/required 편의시설이 설명에 언급되면 true
+- extra_notes가 없으면 모든 카드를 true로 반환
+""".strip()
+
+
+def _parse_curator_json(content: str) -> dict[str, Any]:
+    decoder = json.JSONDecoder()
+    stripped = content.strip()
+    if stripped.startswith("```"):
+        lines = stripped.splitlines()
+        stripped = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
     try:
-        content = call_upstage_chat_content(
-            messages=[{"role": "user", "content": prompt}],
-            api_key=api_key,
-            timeout_seconds=15,
-        )
-        m = re.search(r'\{[^{}]*"lat"[^{}]*\}', content, re.DOTALL)
-        if m:
-            data = json.loads(m.group())
-            return float(data["lat"]), float(data["lng"])
-    except Exception:
-        pass
-    return None, None
+        parsed, _ = decoder.raw_decode(stripped.strip())
+    except json.JSONDecodeError as exc:
+        raise SolarClientError(f"Curator LLM returned non-JSON: {content}") from exc
+    if not isinstance(parsed, dict) or "pests" not in parsed:
+        raise SolarClientError(f"Curator LLM returned unexpected shape: {parsed}")
+    return parsed
+
+
+def _score_from_llm_output(
+    llm_result: dict[str, Any],
+) -> tuple[int, list[dict[str, Any]]]:
+    score = 0
+    card_matches: list[dict[str, Any]] = []
+    for card, weight in _SOFT_WEIGHTS.items():
+        item = llm_result.get(card, {})
+        matched = item.get("matched", False)
+        evidence = item.get("evidence", "정보 없음")
+        if matched is True:
+            pts = weight
+        elif matched == "partial":
+            pts = weight // 2
+        else:
+            pts = 0
+        score += pts
+        card_matches.append({"card": card, "matched": matched, "evidence": evidence, "score": pts, "max_score": weight})
+    return score, card_matches
+
+
+def _score_solar(
+    prop: dict[str, Any],
+    conditions: ConditionState,
+    api_key: str | None,
+) -> tuple[int, list[dict[str, Any]], str]:
+    soft = conditions["soft_conditions"]
+    user_message = json.dumps(
+        {
+            "soft_conditions": soft,
+            "property": {
+                "id": prop["id"],
+                "facilities": prop["facilities"],
+                "description": prop["description"],
+            },
+        },
+        ensure_ascii=False,
+    )
+    messages = [
+        {"role": "system", "content": _CURATOR_SYSTEM_PROMPT},
+        {"role": "user", "content": user_message},
+    ]
+    content = call_upstage_chat_content(messages=messages, api_key=api_key)
+    llm_result = _parse_curator_json(content)
+    score, card_matches = _score_from_llm_output(llm_result)
+    return score, card_matches, "solar"
 
 
 def _build_result(
@@ -989,8 +1176,6 @@ def _build_result(
     score: int,
     card_matches: list[dict[str, Any]],
     agent_mode: str,
-    commute_score: int = 0,
-    commute_total_minutes: int | None = None,
 ) -> dict[str, Any]:
     return {
         "property_id": prop["id"],
@@ -1008,178 +1193,14 @@ def _build_result(
         "transit_station": prop["transit"]["station"],
         "soft_card_matches": card_matches,
         "agent_mode": agent_mode,
+        # 구조화된 입지 분석 필드
         "lat": prop.get("lat"),
         "lng": prop.get("lng"),
         "commute_legs": prop.get("commute_legs", []),
-        "commute_total_minutes": commute_total_minutes,
+        "commute_total_minutes": prop.get("commute_total_minutes", prop["transit"]["walk_min"]),
         "night_safety": prop.get("night_safety", []),
         "convenience": prop.get("convenience", []),
     }
-
-
-_HOLISTIC_SYSTEM_PROMPT = """
-너는 부동산 매물 추천 전문가다. 사용자 조건과 후보 매물 목록을 비교하여 가장 적합한 N개를 선정한다.
-
-핵심 원칙:
-- 후보 전체를 비교해 상대적으로 최적 매물을 선정한다 (매물별 독립 채점 금지)
-- 사용자가 강조한 조건에 비중을 높인다
-- 반지하·벌레·곰팡이 이력 매물은 결격 수준으로 감점
-- distance_km가 제공된 경우 가까울수록 유리하나 소프트 조건 충족도가 우선
-- 출퇴근 점수(commute_score): 사용자의 목적지·교통 조건과 commute_total_minutes를 비교해 판단
-  - 매물별 commute_total_minutes를 기준으로 후보 간 상대 비교해 0-30점 부여
-  - 사용자가 출퇴근 시간을 명시했다면 그 기준을 우선 적용
-
-출력 (JSON만, 추가 설명 없음):
-{
-  "selected": [
-    {
-      "id": "S001",
-      "soft_score": 62,
-      "commute_score": 22,
-      "cards": {
-        "pests": {"matched": true, "evidence": "한 문장"},
-        "mold": {"matched": true, "evidence": "한 문장"},
-        "default_options": {"matched": "partial", "evidence": "한 문장"},
-        "convenience_facilities": {"matched": true, "evidence": "한 문장"},
-        "extra_notes": {"matched": true, "evidence": "한 문장"}
-      }
-    }
-  ]
-}
-
-soft_score: 0-70 범위, 후보 간 상대 비교
-commute_score: 0-30 범위, 출퇴근 조건 기반 채점
-matched: true / "partial" / false
-""".strip()
-
-
-def _cards_to_matches(cards: dict[str, Any]) -> list[dict[str, Any]]:
-    """Solar cards dict → soft_card_matches list."""
-    result = []
-    for card, max_score in _CARD_MAX.items():
-        info = cards.get(card, {})
-        matched = info.get("matched", "partial")
-        evidence = info.get("evidence", "정보 없음")
-        if matched is True:
-            pts = max_score
-        elif matched == "partial":
-            pts = max_score // 2
-        else:
-            pts = 0
-        result.append({"card": card, "matched": matched, "evidence": evidence, "score": pts, "max_score": max_score})
-    return result
-
-
-def _parse_holistic_json(content: str, valid_ids: set[str]) -> list[dict[str, Any]]:
-    """Solar holistic 응답에서 selected 리스트를 파싱."""
-    stripped = content.strip()
-    if stripped.startswith("```"):
-        lines = stripped.splitlines()
-        stripped = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
-    try:
-        data = json.loads(stripped.strip())
-    except json.JSONDecodeError:
-        m = re.search(r'\{.*\}', stripped, re.DOTALL)
-        if not m:
-            raise SolarClientError(f"Holistic LLM returned non-JSON: {content[:200]}")
-        data = json.loads(m.group())
-
-    selected = data.get("selected", [])
-    if not isinstance(selected, list):
-        raise SolarClientError(f"Holistic LLM returned unexpected shape: {data}")
-    return [item for item in selected if isinstance(item, dict) and item.get("id") in valid_ids]
-
-
-def _holistic_evaluate(
-    candidates: list[dict[str, Any]],
-    conditions: ConditionState,
-    dest_lat: float | None,
-    dest_lng: float | None,
-    top_n: int,
-    api_key: str | None,
-) -> list[dict[str, Any]]:
-    """Solar에게 후보 전체를 한 번에 보여주고 holistic ranking을 요청한다."""
-    prop_map = {p["id"]: p for p in candidates}
-
-    candidate_list: list[dict[str, Any]] = []
-    for p in candidates:
-        item: dict[str, Any] = {
-            "id": p["id"],
-            "transit_station": p["transit"]["station"],
-            "transit_walk_min": p["transit"]["walk_min"],
-            "monthly_rent": p["monthly_rent"],
-            "facilities": p["facilities"],
-            "description": p["description"],
-            "is_basement": p.get("is_basement", False),
-            "commute_total_minutes": p.get("commute_total_minutes"),
-        }
-        if dest_lat is not None and p.get("lat") and p.get("lng"):
-            item["distance_km"] = round(_haversine_km(p["lat"], p["lng"], dest_lat, dest_lng), 2)
-        candidate_list.append(item)
-
-    user_msg = json.dumps(
-        {
-            "top_n": top_n,
-            "hard_conditions": conditions["hard_conditions"],
-            "soft_conditions": conditions["soft_conditions"],
-            "candidates": candidate_list,
-        },
-        ensure_ascii=False,
-    )
-    messages = [
-        {"role": "system", "content": _HOLISTIC_SYSTEM_PROMPT},
-        {"role": "user", "content": user_msg},
-    ]
-    content = call_upstage_chat_content(messages=messages, api_key=api_key, timeout_seconds=45)
-    selected = _parse_holistic_json(content, set(prop_map.keys()))
-
-    results: list[dict[str, Any]] = []
-    for item in selected[:top_n]:
-        prop = prop_map[item["id"]]
-        soft_score = max(0, min(70, int(item.get("soft_score", 35))))
-        commute_pts = max(0, min(30, int(item.get("commute_score", 0))))
-        card_matches = _cards_to_matches(item.get("cards", {}))
-
-        total = min(100, soft_score + commute_pts)
-        results.append(_build_result(prop, total, card_matches, "solar_holistic", commute_pts, prop.get("commute_total_minutes")))
-
-    return sorted(results, key=lambda x: x["score"], reverse=True)
-
-
-def _rule_fallback(
-    candidates: list[dict[str, Any]],
-    conditions: ConditionState,
-    top_n: int,
-) -> list[dict[str, Any]]:
-    """Solar 실패 시 단순 rule-based 폴백."""
-    results: list[dict[str, Any]] = []
-    for p in candidates:
-        mock_min = p.get("commute_total_minutes")
-        if mock_min is not None:
-            commute_pts = _commute_score_by_minutes(mock_min)
-            commute_min: int | None = mock_min
-        else:
-            commute_pts = 0
-            commute_min = None
-
-        desc = (p["description"] + " " + " ".join(p["facilities"])).lower()
-        soft_score = 35
-        if "벌레" in desc:
-            soft_score -= 20
-        if "곰팡이" in desc:
-            soft_score -= 20
-        if p.get("is_basement"):
-            soft_score -= 15
-        soft_score = max(0, soft_score)
-
-        card_matches = [
-            {"card": card, "matched": True, "evidence": "자동 분류", "score": ms // 2, "max_score": ms}
-            for card, ms in _CARD_MAX.items()
-        ]
-        total = min(100, soft_score + commute_pts)
-        results.append(_build_result(p, total, card_matches, "rule", commute_pts, commute_min))
-
-    return sorted(results, key=lambda x: x["score"], reverse=True)[:top_n]
 
 
 class ListingCurator:
@@ -1194,37 +1215,50 @@ class ListingCurator:
         top_n: int = 5,
     ) -> dict[str, Any]:
         passed, _ = _apply_hard_filter(MOCK_PROPERTIES, conditions)
+        soft = conditions["soft_conditions"]
+
+        MAX_SOLAR = top_n * 3
+        rule_prescored = sorted(
+            passed,
+            key=lambda p: _score_rule(p, soft)[0] + _commute_score(p),
+            reverse=True,
+        )
+        solar_candidates = {p["id"] for p in rule_prescored[:MAX_SOLAR]}
         use_solar = self.use_solar and bool(self.api_key or get_solar_api_key())
-
-        # Solar: 목적지 장소명 → lat/lng 변환 (1회 호출)
-        dest_lat, dest_lng = None, None
+        dest_lat: float | None = None
+        dest_lng: float | None = None
         if use_solar:
-            try:
-                dest_lat, dest_lng = _get_destination_coords(conditions, self.api_key)
-            except Exception:
-                pass
+            dest_lat, dest_lng = _get_destination_coords(conditions, self.api_key)
 
-        # Haversine 사전 필터: 가까운 순 상위 30개로 후보 압축
-        _GEO_CANDIDATES = 30
-        if dest_lat is not None and len(passed) > _GEO_CANDIDATES:
-            def _dist(p: dict[str, Any]) -> float:
-                if p.get("lat") and p.get("lng"):
-                    return _haversine_km(p["lat"], p["lng"], dest_lat, dest_lng)
-                return float("inf")
-            candidates = sorted(passed, key=_dist)[:_GEO_CANDIDATES]
-        else:
-            candidates = passed[:_GEO_CANDIDATES]
+        def commute_points(prop: dict[str, Any]) -> int:
+            if dest_lat is None or dest_lng is None:
+                return _commute_score(prop)
+            if prop.get("lat") is None or prop.get("lng") is None:
+                return _commute_score(prop)
+            km = _haversine_km(prop["lat"], prop["lng"], dest_lat, dest_lng)
+            return _commute_score_by_distance(km, prop["transit"]["walk_min"])
 
-        # Solar holistic 평가 (1회 호출로 전체 비교) 또는 rule 폴백
-        if use_solar:
-            try:
-                results = _holistic_evaluate(candidates, conditions, dest_lat, dest_lng, top_n, self.api_key)
-                if not results:
-                    results = _rule_fallback(candidates, conditions, top_n)
-            except Exception:
-                results = _rule_fallback(candidates, conditions, top_n)
-        else:
-            results = _rule_fallback(candidates, conditions, top_n)
+        def score_one(prop: dict[str, Any]) -> dict[str, Any]:
+            if use_solar and prop["id"] in solar_candidates:
+                try:
+                    score, card_matches, agent_mode = _score_solar(prop, conditions, self.api_key)
+                except Exception:
+                    score, card_matches = _score_rule(prop, soft)
+                    agent_mode = "rule_fallback"
+            else:
+                score, card_matches = _score_rule(prop, soft)
+                agent_mode = "rule"
+            return _build_result(prop, min(100, score + commute_points(prop)), card_matches, agent_mode)
 
-        top = sorted(results, key=lambda x: x["score"], reverse=True)[:top_n]
+        solar_props = [p for p in passed if p["id"] in solar_candidates]
+        rule_props = [p for p in passed if p["id"] not in solar_candidates]
+
+        rule_results = [score_one(p) for p in rule_props]
+
+        with ThreadPoolExecutor(max_workers=MAX_SOLAR) as pool:
+            futures = {pool.submit(score_one, p): p for p in solar_props}
+            solar_results = [f.result() for f in as_completed(futures)]
+
+        scored = solar_results + rule_results
+        top = sorted(scored, key=lambda x: x["score"], reverse=True)[:top_n]
         return {"session_id": session_id, "top_properties": top}

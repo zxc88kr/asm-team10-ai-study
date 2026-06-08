@@ -106,14 +106,6 @@ def _handle_with_solar(
     prompt = "\n\n".join([SYSTEM_PROMPT, current_user_content])
     solar_state = call_upstage_json(prompt=prompt, messages=llm_messages, api_key=api_key)
     next_state = _deep_merge(conditions, solar_state)
-
-    # 위치 필드는 누적이 아닌 교체: 새 값이 있으면 이전 값을 덮어씀
-    solar_loc = solar_state.get("hard_conditions", {}).get("location_transport", {})
-    if solar_loc.get("landmarks"):
-        next_state["hard_conditions"]["location_transport"]["landmarks"] = solar_loc["landmarks"]
-    if solar_loc.get("areas"):
-        next_state["hard_conditions"]["location_transport"]["areas"] = solar_loc["areas"]
-
     next_state = apply_rule_extraction(next_state, user_message)
     next_state["agent_mode"] = "solar"
     return update_missing_and_question(next_state, trust_llm_action=True)
