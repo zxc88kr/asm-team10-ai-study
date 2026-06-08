@@ -97,39 +97,39 @@ const CONV_KEYWORDS: Array<{ keyword: string; name: string; icon: string; defaul
 ]
 
 function agentToLocationAnalysis(item: AgentPropertyItem): LocationAnalysis {
-  const combined = item.description + ' ' + item.address_detail
-
-  const extractMin = (keyword: string, fallback: number): number => {
-    const m = combined.match(new RegExp(`${keyword}[^.]*?(\\d+)분`))
-    return m ? parseInt(m[1]) : fallback
-  }
-
   const scoreBreakdown = item.soft_card_matches.map(m => ({
     label: CARD_BREAKDOWN_LABEL[m.card] ?? m.card,
     score: m.matched === true ? 90 : m.matched === 'partial' ? 60 : 30,
   }))
 
   const commute = {
-    legs: [{ label: item.transit_station, minutes: item.transit_walk_min, type: 'walk' as const }],
-    totalMinutes: item.transit_walk_min,
-    transfers: 0,
+    legs: item.commute_legs.length > 0
+      ? item.commute_legs
+      : [{ label: item.transit_station, minutes: item.transit_walk_min, type: 'walk' as const }],
+    totalMinutes: item.commute_total_minutes ?? item.transit_walk_min,
+    transfers: Math.max(0, item.commute_legs.filter(l => l.type !== 'walk').length - 1),
     mainNote: item.address_detail,
   }
 
-  const hasCctv = item.facilities.includes('CCTV')
-  const isBasement = combined.includes('반지하') || combined.includes('지하')
-  const hasGoodLight = combined.includes('채광') || combined.includes('햇볕') || combined.includes('조망')
-  const hasNearby = combined.includes('편의점') || combined.includes('마트')
+  const nightSafety: NightSafetyItem[] = item.night_safety.length > 0
+    ? item.night_safety
+    : (() => {
+        const combined = item.description + ' ' + item.address_detail
+        const hasCctv = item.facilities.includes('CCTV')
+        const isBasement = combined.includes('반지하')
+        const hasNearby = combined.includes('편의점') || combined.includes('마트')
+        return [
+          { icon: 'camera', label: 'CCTV 설치', detail: hasCctv ? '건물 입구 CCTV 확인' : '정보 없음', pass: hasCctv },
+          { icon: 'sun', label: '채광/층수 양호', detail: isBasement ? '반지하 구조' : '일반 층수', pass: !isBasement },
+          { icon: 'store', label: '편의시설 근접', detail: hasNearby ? '편의점/마트 근거리' : '정보 없음', pass: hasNearby },
+        ]
+      })()
 
-  const nightSafety: NightSafetyItem[] = [
-    { icon: 'camera', label: 'CCTV 설치', detail: hasCctv ? '건물 입구 CCTV 확인' : '정보 없음', pass: hasCctv },
-    { icon: 'sun', label: '채광/층수 양호', detail: isBasement ? '반지하 구조' : hasGoodLight ? '채광 양호' : '일반 층수', pass: !isBasement },
-    { icon: 'store', label: '편의시설 근접', detail: hasNearby ? '편의점/마트 근거리' : '정보 없음', pass: hasNearby },
-  ]
-
-  const convenience: ConvenienceFacility[] = CONV_KEYWORDS
-    .filter(c => combined.includes(c.keyword))
-    .map(c => ({ name: c.name, walkMin: extractMin(c.keyword, c.defaultMin), icon: c.icon }))
+  const convenience: ConvenienceFacility[] = item.convenience.length > 0
+    ? item.convenience.map(c => ({ name: c.name, walkMin: c.walk_min, icon: c.icon }))
+    : CONV_KEYWORDS
+        .filter(c => (item.description + item.address_detail).includes(c.keyword))
+        .map(c => ({ name: c.name, walkMin: c.defaultMin, icon: c.icon }))
 
   const basis: RecommendationBasis[] = item.soft_card_matches
     .filter(m => m.matched === true || m.matched === 'partial')
@@ -167,7 +167,7 @@ function agentToScoredListing(item: AgentPropertyItem): ScoredListing {
     pyeong: 0,
     floor: 1,
     options: item.facilities,
-    commuteMin: item.transit_walk_min,
+    commuteMin: item.commute_total_minutes ?? item.transit_walk_min,
     night: { lit: true, mainRoad: true, alleyM: 0 },
     nightTransit: 'ok',
     thumb: THUMB_MAP[item.type] ?? '🏠',
