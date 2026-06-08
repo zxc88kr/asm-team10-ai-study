@@ -880,12 +880,19 @@ MOCK_PROPERTIES: list[dict[str, Any]] = [
 ]
 
 _SOFT_WEIGHTS = {
-    "pests": 25,
-    "mold": 25,
-    "default_options": 20,
-    "convenience_facilities": 15,
-    "extra_notes": 15,
+    "pests": 20,
+    "mold": 20,
+    "default_options": 15,
+    "convenience_facilities": 10,
+    "extra_notes": 5,
 }
+# 소프트 조건 합계 70점 + 출퇴근 점수 최대 30점 = 100점 만점
+
+
+def _commute_score(prop: dict[str, Any]) -> int:
+    """출퇴근 시간 기반 점수 (최대 30점). 조건 미지정 시 주요 차별화 요소."""
+    minutes = prop.get("commute_total_minutes", prop["transit"]["walk_min"])
+    return max(0, 30 - minutes // 2)
 
 _FACILITY_ALIASES: dict[str, list[str]] = {
     "편의점": ["편의점"],
@@ -954,11 +961,11 @@ def _score_rule(
         else:
             pts, matched, evidence = weight // 2, "partial", "벌레 관련 정보 없음 (중립)"
     else:
-        pts, matched, evidence = weight, True, "조건 없음"
+        pts, matched, evidence = weight // 2, True, "조건 없음"
     score += pts
     card_matches.append({"card": "pests", "matched": matched, "evidence": evidence})
 
-    # mold (25점)
+    # mold (20점)
     weight = _SOFT_WEIGHTS["mold"]
     if soft["mold"].get("avoid"):
         if any(kw in combined for kw in _MOLD_CLEAR):
@@ -970,11 +977,11 @@ def _score_rule(
         else:
             pts, matched, evidence = weight // 2, "partial", "곰팡이 관련 정보 없음 (중립)"
     else:
-        pts, matched, evidence = weight, True, "조건 없음"
+        pts, matched, evidence = weight // 2, True, "조건 없음"
     score += pts
     card_matches.append({"card": "mold", "matched": matched, "evidence": evidence})
 
-    # default_options (20점)
+    # default_options (15점)
     weight = _SOFT_WEIGHTS["default_options"]
     wanted = list({*soft["default_options"].get("preferred", []), *soft["default_options"].get("required", [])})
     if wanted:
@@ -984,11 +991,11 @@ def _score_rule(
         matched = ratio >= 0.8
         evidence = f"{len(matched_opts)}/{len(wanted)} 항목 포함: {', '.join(matched_opts) or '없음'}"
     else:
-        pts, matched, evidence = weight, True, "조건 없음"
+        pts, matched, evidence = weight // 2, True, "조건 없음"
     score += pts
     card_matches.append({"card": "default_options", "matched": matched, "evidence": evidence})
 
-    # convenience_facilities (15점)
+    # convenience_facilities (10점)
     weight = _SOFT_WEIGHTS["convenience_facilities"]
     wanted_fac = list({
         *soft["convenience_facilities"].get("preferred", []),
@@ -1004,11 +1011,11 @@ def _score_rule(
         matched = ratio >= 0.7
         evidence = f"편의시설 {len(matched_fac)}/{len(wanted_fac)} 확인: {', '.join(matched_fac) or '없음'}"
     else:
-        pts, matched, evidence = weight, True, "조건 없음"
+        pts, matched, evidence = weight // 2, True, "조건 없음"
     score += pts
     card_matches.append({"card": "convenience_facilities", "matched": matched, "evidence": evidence})
 
-    # extra_notes (15점)
+    # extra_notes (5점)
     weight = _SOFT_WEIGHTS["extra_notes"]
     extra_notes: list[str] = soft.get("extra_notes", [])
     if extra_notes:
@@ -1023,7 +1030,7 @@ def _score_rule(
         else:
             pts, matched, evidence = 0, False, "추가 요구사항 키워드 미발견"
     else:
-        pts, matched, evidence = weight, True, "추가 요구사항 없음"
+        pts, matched, evidence = weight // 2, True, "추가 요구사항 없음"
     score += pts
     card_matches.append({"card": "extra_notes", "matched": matched, "evidence": evidence})
 
@@ -1176,7 +1183,8 @@ class ListingCurator:
                 score, card_matches = _score_rule(prop, soft)
                 agent_mode = "rule"
 
-            scored.append(_build_result(prop, score, card_matches, agent_mode))
+            total = min(100, score + _commute_score(prop))
+            scored.append(_build_result(prop, total, card_matches, agent_mode))
 
         top = sorted(scored, key=lambda x: x["score"], reverse=True)[:top_n]
         return {"session_id": session_id, "top_properties": top}
