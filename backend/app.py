@@ -100,7 +100,7 @@ def agent_reset(payload: AgentResetRequest) -> dict[str, Any]:
 class RecommendRequest(BaseModel):
     conditions: dict = Field(...)
     session_id: str = DEFAULT_SESSION_ID
-    top_n: int = Field(default=3, ge=1, le=10)
+    top_n: int = Field(default=5, ge=1, le=10)
     use_solar: bool | None = None
 
 
