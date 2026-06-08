@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from copy import deepcopy
 
+from .listing_curator import ListingCurator
 from .rule_extractor import apply_rule_extraction
 from .schema import ConditionState, create_empty_conditions, update_missing_and_question
 from .solar_client import SolarClientError, call_upstage_json, get_solar_api_key
@@ -27,7 +28,24 @@ current_state, user_message, required_output_shape 같은 wrapper 키를 반환�
 모르는 값은 null 또는 빈 배열로 둔다.
 하드 조건 위치/교통과 월세가 비어 있으면 missing_required_conditions에 넣는다.
 next_question에는 다음에 물어볼 한 문장만 넣는다.
-소프트 조건을 하나 이상 받았거나 사용자가 "없어", "더 없어"처럼 추가 조건이 없다고 말하면 is_complete=true, next_action="recommend_listings"로 둔다.
+
+[next_action 판단 규칙 — 에이전트가 직접 결정]
+next_action은 아래 세 값 중 하나로 설정한다:
+
+"ask_required_conditions"
+  - 위치/교통 또는 월세 정보가 아직 없을 때
+
+"recommend_listings"
+  - 사용자가 명시적으로 추천·검색을 요청할 때 ("찾아줘", "추천해줘", "보여줘", "됐어")
+  - 사용자가 조건을 다 말했다는 신호를 줄 때 ("없어", "더 없어", "그게 다야", "이 정도면 돼")
+  - 소프트 조건을 1개 이상 받은 상태에서 사용자 발화에 새 조건이 없을 때
+  - is_complete=true, next_question에는 추천을 시작한다는 짧은 안내 문구 작성
+
+"ask_soft_conditions"
+  - 소프트 조건을 아직 하나도 받지 못했고 사용자가 계속 조건을 말하는 중일 때
+  - is_complete=false
+
+규칙 기반으로 100% 판단할 수 없는 경우(뉘앙스·의도 불명확)는 에이전트가 문맥을 읽고 직접 결정한다.
 """.strip()
 
 
@@ -40,7 +58,7 @@ class RoomConditionAgent:
     def reset(self) -> ConditionState:
         self.state = create_empty_conditions()
         return deepcopy(self.state)
-    
+
     def _deep_merge(self, base, new):
         if isinstance(base, dict) and isinstance(new, dict):
             merged = deepcopy(base)
@@ -65,31 +83,22 @@ class RoomConditionAgent:
     def handle_message(self, user_message: str) -> ConditionState:
         if self.use_solar and (self.api_key or get_solar_api_key()):
             try:
-                self.state = self._handle_with_solar(user_message)
-                return deepcopy(self.state)
+                state = self._handle_with_solar(user_message)
+                self.state = state
             except SolarClientError:
                 self.state = apply_rule_extraction(self.state, user_message)
                 self.state["agent_mode"] = "rule_fallback"
-                return deepcopy(self.state)
+        else:
+            self.state = apply_rule_extraction(self.state, user_message)
+            self.state["agent_mode"] = "rule"
 
-        self.state = apply_rule_extraction(self.state, user_message)
-        self.state["agent_mode"] = "rule"
+        # Solar·규칙·폴백 모든 경로에서 recommend_listings 판단 시 자동 추천
+        # top_properties가 이미 있으면 재실행 생략 (중복 방지)
+        if self.state.get("next_action") == "recommend_listings" and not self.state.get("top_properties"):
+            self.state = self._auto_recommend(self.state)
         return deepcopy(self.state)
 
     def _handle_with_solar(self, user_message: str) -> ConditionState:
-        prompt = "\n\n".join(
-            [
-                SYSTEM_PROMPT,
-                json.dumps(
-                    {
-                        "current_state": self.state,
-                        "user_message": user_message,
-                        "required_output_shape": create_empty_conditions(),
-                    },
-                    ensure_ascii=False,
-                ),
-            ]
-        )
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
             {
@@ -104,8 +113,20 @@ class RoomConditionAgent:
                 ),
             },
         ]
+        prompt = "\n\n".join([SYSTEM_PROMPT, messages[1]["content"]])
         solar_state = call_upstage_json(prompt=prompt, messages=messages, api_key=self.api_key)
         next_state = self._deep_merge(self.state, solar_state)
         next_state = apply_rule_extraction(next_state, user_message)
         next_state["agent_mode"] = "solar"
-        return update_missing_and_question(next_state)
+        # trust_llm_action=True: 하드 조건 누락 시만 규칙 강제, 나머지는 LLM 판단 신뢰
+        return update_missing_and_question(next_state, trust_llm_action=True)
+
+    def _auto_recommend(self, state: ConditionState) -> ConditionState:
+        """LLM이 recommend_listings로 판단했을 때 자동으로 ListingCurator를 실행한다."""
+        try:
+            curator = ListingCurator(use_solar=self.use_solar, api_key=self.api_key)
+            result = curator.recommend(conditions=state, top_n=3)
+            return {**deepcopy(state), "top_properties": result["top_properties"]}
+        except Exception:
+            # 추천 실패 시 조건 상태만 반환 (프론트가 별도 호출로 처리)
+            return deepcopy(state)

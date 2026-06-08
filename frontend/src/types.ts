@@ -212,4 +212,5 @@ export interface AgentConditions {
   next_question: string
   is_complete?: boolean
   next_action?: 'ask_required_conditions' | 'ask_soft_conditions' | 'recommend_listings'
+  top_properties?: AgentPropertyItem[]
 }

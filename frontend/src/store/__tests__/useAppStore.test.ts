@@ -102,9 +102,14 @@ describe('updateRent', () => {
     expect(useAppStore.getState().hard.rent).toBe(50)
   })
 
-  it('updateRent 후 추천이 갱신됨', () => {
-    act(() => useAppStore.getState().updateRent(50))
+  it('updateRent 후 매물이 있으면 recommended=true', () => {
+    act(() => useAppStore.getState().updateRent(80))
     expect(useAppStore.getState().recommended).toBe(true)
+  })
+
+  it('updateRent 후 매물이 없으면 recommended=false', () => {
+    act(() => useAppStore.getState().updateRent(50))
+    expect(useAppStore.getState().recommended).toBe(false)
   })
 })
 
