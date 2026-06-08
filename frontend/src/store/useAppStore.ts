@@ -244,26 +244,47 @@ const useAppStore = create<AppState>((set, get) => ({
       const { monthly_rent, location_transport } = result.hard_conditions
       const { basement } = result.soft_conditions
 
-      set(s => {
-        const newHard: HardConstraints = { ...s.hard }
-        if (monthly_rent.max_manwon !== null) newHard.rent = monthly_rent.max_manwon
-        if (location_transport.commute_time_max_minutes !== null) newHard.commuteMax = location_transport.commute_time_max_minutes
-        if (basement.avoid === true) newHard.noBasement = true
+      const newHard: HardConstraints = { ...get().hard }
+      if (monthly_rent.max_manwon !== null) newHard.rent = monthly_rent.max_manwon
+      if (location_transport.commute_time_max_minutes !== null) newHard.commuteMax = location_transport.commute_time_max_minutes
+      if (basement.avoid === true) newHard.noBasement = true
 
-        const addCards: string[] = []
-        if (monthly_rent.max_manwon !== null && !s.cards.includes('budget_75')) addCards.push('budget_75')
-        if (location_transport.commute_time_max_minutes !== null && !s.cards.includes('gangnam_commute')) addCards.push('gangnam_commute')
-        if (basement.avoid === true && !s.cards.includes('no_basement')) addCards.push('no_basement')
+      const addCards: string[] = []
+      if (monthly_rent.max_manwon !== null && !get().cards.includes('budget_75')) addCards.push('budget_75')
+      if (location_transport.commute_time_max_minutes !== null && !get().cards.includes('gangnam_commute')) addCards.push('gangnam_commute')
+      if (basement.avoid === true && !get().cards.includes('no_basement')) addCards.push('no_basement')
 
-        return {
+      // LLM이 recommend_listings로 판단 → 백엔드가 top_properties 포함해서 반환
+      if (result.top_properties && result.top_properties.length > 0) {
+        const top = result.top_properties.map(agentToScoredListing)
+        set(s => ({
           hard: newHard,
           cards: [...s.cards, ...addCards],
           isTyping: false,
           agentConditions: result,
-          conditionsComplete: result.missing_required_conditions.length === 0,
-          messages: [...s.messages, { role: 'ai', text: result.next_question }],
-        }
-      })
+          conditionsComplete: true,
+          lastTop: top,
+          agentListings: top.map(sl => sl.L),
+          recommended: true,
+          excludedCount: 0,
+          currentStep: 3,
+          messages: [
+            ...s.messages,
+            { role: 'ai' as const, text: result.next_question },
+            { role: 'ai' as const, text: `맞춤 매물 TOP ${top.length}을 찾았어요. 우측에서 확인해보세요!` },
+          ],
+        }))
+        return
+      }
+
+      set(s => ({
+        hard: newHard,
+        cards: [...s.cards, ...addCards],
+        isTyping: false,
+        agentConditions: result,
+        conditionsComplete: result.missing_required_conditions.length === 0,
+        messages: [...s.messages, { role: 'ai', text: result.next_question }],
+      }))
     }).catch(() => {
       set(s => ({
         isTyping: false,
