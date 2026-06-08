@@ -964,7 +964,7 @@ def _score_rule(
     else:
         pts, matched, evidence = weight // 2, True, "조건 없음"
     score += pts
-    card_matches.append({"card": "pests", "matched": matched, "evidence": evidence})
+    card_matches.append({"card": "pests", "matched": matched, "evidence": evidence, "score": pts, "max_score": _SOFT_WEIGHTS["pests"]})
 
     # mold (20점)
     weight = _SOFT_WEIGHTS["mold"]
@@ -980,7 +980,7 @@ def _score_rule(
     else:
         pts, matched, evidence = weight // 2, True, "조건 없음"
     score += pts
-    card_matches.append({"card": "mold", "matched": matched, "evidence": evidence})
+    card_matches.append({"card": "mold", "matched": matched, "evidence": evidence, "score": pts, "max_score": _SOFT_WEIGHTS["mold"]})
 
     # default_options (15점)
     weight = _SOFT_WEIGHTS["default_options"]
@@ -994,7 +994,7 @@ def _score_rule(
     else:
         pts, matched, evidence = weight // 2, True, "조건 없음"
     score += pts
-    card_matches.append({"card": "default_options", "matched": matched, "evidence": evidence})
+    card_matches.append({"card": "default_options", "matched": matched, "evidence": evidence, "score": pts, "max_score": _SOFT_WEIGHTS["default_options"]})
 
     # convenience_facilities (10점)
     weight = _SOFT_WEIGHTS["convenience_facilities"]
@@ -1014,7 +1014,7 @@ def _score_rule(
     else:
         pts, matched, evidence = weight // 2, True, "조건 없음"
     score += pts
-    card_matches.append({"card": "convenience_facilities", "matched": matched, "evidence": evidence})
+    card_matches.append({"card": "convenience_facilities", "matched": matched, "evidence": evidence, "score": pts, "max_score": _SOFT_WEIGHTS["convenience_facilities"]})
 
     # extra_notes (5점)
     weight = _SOFT_WEIGHTS["extra_notes"]
@@ -1033,7 +1033,7 @@ def _score_rule(
     else:
         pts, matched, evidence = weight // 2, True, "추가 요구사항 없음"
     score += pts
-    card_matches.append({"card": "extra_notes", "matched": matched, "evidence": evidence})
+    card_matches.append({"card": "extra_notes", "matched": matched, "evidence": evidence, "score": pts, "max_score": _SOFT_WEIGHTS["extra_notes"]})
 
     return score, card_matches
 
@@ -1095,7 +1095,7 @@ def _score_from_llm_output(
         else:
             pts = 0
         score += pts
-        card_matches.append({"card": card, "matched": matched, "evidence": evidence})
+        card_matches.append({"card": card, "matched": matched, "evidence": evidence, "score": pts, "max_score": weight})
     return score, card_matches
 
 

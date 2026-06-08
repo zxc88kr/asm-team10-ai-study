@@ -66,6 +66,8 @@ export const LISTINGS: Listing[] = [
         { label: '생활 편의성', score: 84 },
       ],
     },
+    lat: 37.50471,
+    lng: 127.04906,
   },
   {
     id: 'B',
@@ -131,6 +133,8 @@ export const LISTINGS: Listing[] = [
         { label: '생활 편의성', score: 88 },
       ],
     },
+    lat: 37.50075,
+    lng: 127.03654,
   },
   {
     id: 'C',
@@ -196,5 +200,7 @@ export const LISTINGS: Listing[] = [
         { label: '생활 편의성', score: 80 },
       ],
     },
+    lat: 37.48427,
+    lng: 126.92947,
   },
 ]

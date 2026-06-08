@@ -1,4 +1,4 @@
-import { Home, MessageCircle, Building2, MapPin, Bookmark, Check } from 'lucide-react'
+import { Home, MapPin, Bookmark, Check } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
 
@@ -10,8 +10,6 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { icon: Home, label: '홈', id: 'home' },
-  { icon: MessageCircle, label: '대화', id: 'chat' },
-  { icon: Building2, label: '추천 매물', id: 'listings' },
   { icon: MapPin, label: '입지 분석', id: 'analysis' },
   { icon: Bookmark, label: '저장한 매물', id: 'saved' },
 ]
@@ -37,13 +35,13 @@ export default function Sidebar() {
   const { currentStep, activeView, selectedListingId, openAnalysis, closeAnalysis, lastTop } = useAppStore()
 
   const handleNavClick = (id: string) => {
-    if (id === 'chat') closeAnalysis()
+    if (id === 'home') closeAnalysis()
     if (id === 'analysis' && lastTop && lastTop.length > 0) {
       openAnalysis(selectedListingId ?? lastTop[0].L.id)
     }
   }
 
-  const activeNavId = activeView === 'analysis' ? 'analysis' : 'chat'
+  const activeNavId = activeView === 'analysis' ? 'analysis' : 'home'
   return (
     <aside className="sidebar">
       <div className="brand">

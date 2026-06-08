@@ -1,6 +1,6 @@
 import type { KeyboardEvent } from 'react'
 import { useRef, useEffect, useState } from 'react'
-import { Bot, User, HelpCircle, Bell, RotateCcw, Paperclip, Mic, Send } from 'lucide-react'
+import { Bot, User, RotateCcw, Paperclip, Mic, Send } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
 
 function formatTime() {
@@ -12,7 +12,7 @@ function formatTime() {
 }
 
 export default function ChatPanel() {
-  const { messages, isTyping, advance, reset, conditionsComplete, recommended, runRecommendation } = useAppStore()
+  const { messages, isTyping, isSearching, advance, reset, conditionsComplete, recommended, runRecommendation } = useAppStore()
   const [inputVal, setInputVal] = useState('')
   const [currentTime] = useState(formatTime)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -54,8 +54,6 @@ export default function ChatPanel() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button className="btn-icon" type="button" aria-label="도움말"><HelpCircle size={15} /></button>
-          <button className="btn-icon" type="button" aria-label="알림"><Bell size={15} /></button>
           <button className="btn-icon" onClick={reset} type="button">
             <RotateCcw size={13} /> 초기화
           </button>
@@ -96,20 +94,22 @@ export default function ChatPanel() {
             </div>
           </div>
         )}
-      </div>
 
-      <div className="composer">
-        {conditionsComplete && !recommended && !isTyping && (
-          <div className="quick">
+        {conditionsComplete && !recommended && !isTyping && !isSearching && (
+          <div className="msg ai">
+            <div className="avatar"><Bot size={20} /></div>
             <button
-              className="chip"
+              className="chip chip-action"
               onClick={() => runRecommendation(true)}
               type="button"
             >
-              매물 찾기
+              매물 찾기 →
             </button>
           </div>
         )}
+      </div>
+
+      <div className="composer">
         <div className="composer-row">
           <button className="btn-icon" style={{ borderRadius: 20, padding: '8px 10px' }} type="button" aria-label="파일 첨부">
             <Paperclip size={15} />

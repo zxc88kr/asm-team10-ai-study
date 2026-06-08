@@ -2,6 +2,7 @@ import {
   Moon, Lightbulb, MapPin, Shield,
   ShoppingBag, ShoppingCart, Pill, Coffee, Shirt, HeartPulse,
   Wallet, Train, Home, Building2,
+  Droplets, Settings, Store, StickyNote, Check, Camera, Sun, Hospital,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -20,6 +21,14 @@ const ICON_MAP: Record<string, LucideIcon> = {
   train: Train,
   home: Home,
   'building-2': Building2,
+  droplets: Droplets,
+  settings: Settings,
+  store: Store,
+  note: StickyNote,
+  check: Check,
+  camera: Camera,
+  sun: Sun,
+  hospital: Hospital,
 }
 
 interface AppIconProps {
