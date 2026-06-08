@@ -255,25 +255,36 @@ const useAppStore = create<AppState>((set, get) => ({
       if (basement.avoid === true && !get().cards.includes('no_basement')) addCards.push('no_basement')
 
       // LLM이 recommend_listings로 판단 → 백엔드가 top_properties 포함해서 반환
-      if (result.top_properties && result.top_properties.length > 0) {
-        const top = result.top_properties.map(agentToScoredListing)
-        set(s => ({
-          hard: newHard,
-          cards: [...s.cards, ...addCards],
-          isTyping: false,
-          agentConditions: result,
-          conditionsComplete: true,
-          lastTop: top,
-          agentListings: top.map(sl => sl.L),
-          recommended: true,
-          excludedCount: 0,
-          currentStep: 3,
-          messages: [
-            ...s.messages,
-            { role: 'ai' as const, text: result.next_question },
-            { role: 'ai' as const, text: `맞춤 매물 TOP ${top.length}을 찾았어요. 우측에서 확인해보세요!` },
-          ],
-        }))
+      if (result.top_properties !== undefined) {
+        if (result.top_properties.length > 0) {
+          const top = result.top_properties.map(agentToScoredListing)
+          set(s => ({
+            hard: newHard,
+            cards: [...s.cards, ...addCards],
+            isTyping: false,
+            agentConditions: result,
+            conditionsComplete: true,
+            lastTop: top,
+            agentListings: top.map(sl => sl.L),
+            recommended: true,
+            excludedCount: 0,
+            currentStep: 3,
+            messages: [
+              ...s.messages,
+              { role: 'ai' as const, text: result.next_question },
+              { role: 'ai' as const, text: `맞춤 매물 TOP ${top.length}을 찾았어요. 우측에서 확인해보세요!` },
+            ],
+          }))
+        } else {
+          set(s => ({
+            hard: newHard,
+            cards: [...s.cards, ...addCards],
+            isTyping: false,
+            agentConditions: result,
+            conditionsComplete: false,
+            messages: [...s.messages, { role: 'ai' as const, text: '입력하신 조건에 맞는 매물이 없어요. 예산이나 출퇴근 조건을 조정해볼까요?' }],
+          }))
+        }
         return
       }
 
@@ -309,8 +320,8 @@ const useAppStore = create<AppState>((set, get) => ({
         .filter((s): s is { L: Listing } & Extract<ScoreResult, { excluded: false }> => !s.excluded)
         .sort((a, b) => b.score - a.score)
       const top = ok.slice(0, 3)
-      set({ lastTop: top, recommended: true, excludedCount: scored.length - ok.length })
-      if (advanceSteps) {
+      set({ lastTop: top, recommended: top.length > 0, excludedCount: scored.length - ok.length })
+      if (top.length > 0 && advanceSteps) {
         set({ currentStep: 2 })
         setTimeout(() => set({ currentStep: 3 }), 500)
       }
@@ -330,6 +341,15 @@ const useAppStore = create<AppState>((set, get) => ({
 
     void postRecommend(agentConditions, sessionId).then(response => {
       const top = response.top_properties.map(agentToScoredListing)
+      if (top.length === 0) {
+        set(s => ({
+          messages: [
+            ...s.messages.filter(m => !m.searching),
+            { role: 'ai' as const, text: '입력하신 조건에 맞는 매물이 없어요. 예산이나 출퇴근 조건을 조정해볼까요?' },
+          ],
+        }))
+        return
+      }
       set(s => ({
         messages: [
           ...s.messages.filter(m => !m.searching),
