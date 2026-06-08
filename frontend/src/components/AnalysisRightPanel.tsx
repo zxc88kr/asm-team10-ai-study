@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
-import useAppStore, { scoreClass } from '../store/useAppStore'
+import useAppStore from '../store/useAppStore'
 import { LISTINGS } from '../data/listings'
 import ConditionSummary from './ConditionSummary'
+import RecommendationList from './RecommendationList'
 
 declare global {
   interface Window {
@@ -57,14 +58,10 @@ function KakaoMap({ lat, lng, title }: KakaoMapProps) {
 
   if (!apiKey) {
     return (
-      <div className="map-placeholder" style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        justifyContent: 'center', height: 160, background: '#E8F0FE',
-        borderRadius: 8, gap: 6, color: '#718096', fontSize: 12,
-      }}>
+      <div className="map-placeholder">
         <span style={{ fontSize: 24 }}>🗺️</span>
         <span>카카오맵 API 키를 설정하면 지도가 표시됩니다</span>
-        <code style={{ fontSize: 10, color: '#A0AEC0' }}>VITE_KAKAO_MAP_KEY=발급받은키</code>
+        <code>VITE_KAKAO_MAP_KEY=발급받은키</code>
       </div>
     )
   }
@@ -73,50 +70,24 @@ function KakaoMap({ lat, lng, title }: KakaoMapProps) {
 }
 
 export default function AnalysisRightPanel() {
-  const { lastTop, selectedListingId, openAnalysis, agentListings } = useAppStore()
+  const { lastTop, selectedListingId, agentListings } = useAppStore()
 
   const selectedListing =
-    agentListings.find(l => l.id === selectedListingId) ??
-    LISTINGS.find(l => l.id === selectedListingId) ??
+    agentListings.find((l) => l.id === selectedListingId) ??
+    LISTINGS.find((l) => l.id === selectedListingId) ??
     agentListings[0] ??
     LISTINGS[0]
   const analysis = selectedListing.locationAnalysis
-  const score = lastTop?.find(sl => sl.L.id === selectedListing.id)?.score ?? 86
+  const score = lastTop?.find((sl) => sl.L.id === selectedListing.id)?.score ?? 86
 
   const circumference = 2 * Math.PI * 28
   const dashOffset = circumference - (score / 100) * circumference
 
   return (
     <div className="analysis-panels">
-      <ConditionSummary showEdit />
+      <ConditionSummary />
 
-      <div className="card">
-        <div className="card-head">
-          <h2>TOP 3 비교</h2>
-          <button className="card-link" type="button">상세 비교</button>
-        </div>
-        <div className="top3-compare">
-          {lastTop?.map((sl, idx) => (
-            <div
-              key={sl.L.id}
-              className={`compare-item${sl.L.id === selectedListingId ? ' selected' : ''}`}
-              onClick={() => openAnalysis(sl.L.id)}
-            >
-              <div className="compare-thumb">
-                <div className={`compare-rank${idx === 0 ? ' gold' : ''}`}>{idx + 1}</div>
-                {sl.L.thumb}
-              </div>
-              <div className="compare-body">
-                <div className="compare-name">{sl.L.name}</div>
-                <div className="compare-meta">
-                  역 {sl.L.commuteMin}분 · 월 {sl.L.rent}만 원
-                </div>
-              </div>
-              <div className={`compare-score ${scoreClass(sl.score)}`}>{sl.score}</div>
-            </div>
-          ))}
-        </div>
-      </div>
+      <RecommendationList selectedId={selectedListingId} />
 
       <div className="card">
         <div className="card-head">
@@ -158,7 +129,7 @@ export default function AnalysisRightPanel() {
         </div>
         {analysis.scoreBreakdown.length > 0 ? (
           <div className="score-bars">
-            {analysis.scoreBreakdown.map(item => (
+            {analysis.scoreBreakdown.map((item) => (
               <div key={item.label} className="score-bar-row">
                 <span className="score-bar-label">{item.label}</span>
                 <div className="score-bar-track">

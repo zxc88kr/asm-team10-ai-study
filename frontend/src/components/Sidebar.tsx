@@ -34,12 +34,12 @@ function getStepState(stepIdx: number, currentStep: number): 'done' | 'active' |
 }
 
 export default function Sidebar() {
-  const { currentStep, activeView, openAnalysis, closeAnalysis, lastTop } = useAppStore()
+  const { currentStep, activeView, selectedListingId, openAnalysis, closeAnalysis, lastTop } = useAppStore()
 
   const handleNavClick = (id: string) => {
     if (id === 'chat') closeAnalysis()
     if (id === 'analysis' && lastTop && lastTop.length > 0) {
-      openAnalysis(lastTop[0].L.id)
+      openAnalysis(selectedListingId ?? lastTop[0].L.id)
     }
   }
 

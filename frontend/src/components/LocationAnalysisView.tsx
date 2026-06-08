@@ -24,6 +24,7 @@ export default function LocationAnalysisView() {
     LISTINGS[0]
   const scoredListing = lastTop?.find(sl => sl.L.id === listing.id)
   const score = scoredListing?.score ?? 86
+  const rank = lastTop ? lastTop.findIndex(sl => sl.L.id === listing.id) + 1 : 1
   const analysis = listing.locationAnalysis
   const { commute, nightSafety, convenience, basis, pros, cons, aiComment } = analysis
 
@@ -34,6 +35,7 @@ export default function LocationAnalysisView() {
           <button className="btn-icon" onClick={closeAnalysis} type="button">
             <ChevronLeft size={15} /> 뒤로
           </button>
+          <div className="chat-head-avatar"><MapPin size={18} /></div>
           <div>
             <h1>AI 입지 해설사</h1>
             <p>입지 분석 리포트</p>
@@ -45,13 +47,13 @@ export default function LocationAnalysisView() {
         {/* 매물 히어로 카드 */}
         <div className="listing-hero">
           <div className="listing-hero-thumb">
-            <span className="top1-crown"><Crown size={14} /></span>
+            {rank === 1 && <span className="top1-crown"><Crown size={14} /></span>}
             {listing.thumb}
           </div>
           <div className="listing-hero-info">
             <h2>
               {listing.name}
-              <span className="listing-hero-top1">TOP 1</span>
+              {rank > 0 && <span className="listing-hero-top1">TOP {rank}</span>}
             </h2>
             <div className="listing-hero-specs">
               <div className="listing-spec">
@@ -194,7 +196,7 @@ export default function LocationAnalysisView() {
               ))}
             </div>
             <div className="cons-col">
-              <div className="cons-col-title" style={{ color: 'var(--amber)' }}>아쉬운 점</div>
+              <div className="cons-col-title">아쉬운 점</div>
               {cons.map((c, i) => (
                 <div key={i} className="cons-item">{c}</div>
               ))}

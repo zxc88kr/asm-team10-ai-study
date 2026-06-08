@@ -43,17 +43,16 @@ export default function RecommendationList({ onSelectListing, selectedId }: Prop
         {lastTop.map((sl, idx) => (
           <li
             key={sl.L.id}
-            className={`rec-item${idx === 0 ? ' top1' : ''}${selectedId === sl.L.id ? ' selected' : ''}`}
+            className={`rec-item${selectedId === sl.L.id ? ' selected' : ''}`}
             onClick={() => handleClick(sl)}
           >
-            <div className={`rank-badge${idx === 0 ? ' gold' : idx === 1 ? ' silver' : ' bronze'}`}>
+            <div className={`rank-badge ${sl.L.id === selectedId ? 'active' : 'inactive'}`}>
               {idx + 1}
             </div>
             <div className="thumb">{sl.L.thumb}</div>
             <div className="rec-body">
               <div className="flex items-center gap-2">
                 <div className="rec-name">{sl.L.name}</div>
-                <span className="rec-name-arrow">→</span>
               </div>
               <div className="rec-tags">
                 <span className="rec-tag">출퇴근 {sl.L.commuteMin}분</span>

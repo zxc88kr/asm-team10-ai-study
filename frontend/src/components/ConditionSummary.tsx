@@ -1,4 +1,4 @@
-import { Building2, Wallet, Clock, Ban, Star, ShoppingBag, Pencil } from 'lucide-react'
+import { Building2, Wallet, Clock, Ban, Star, ShoppingBag } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import useAppStore from '../store/useAppStore'
 
@@ -24,8 +24,8 @@ function buildRows(agentConditions: NonNullable<ReturnType<typeof useAppStore.ge
       icon: Building2,
       label: '위치/교통',
       value: locationLabel,
-      valBg: '#EEF3FF',
-      valColor: '#4B7BF5',
+      valBg: 'var(--primary-soft)',
+      valColor: 'var(--primary)',
     })
   }
 
@@ -35,8 +35,8 @@ function buildRows(agentConditions: NonNullable<ReturnType<typeof useAppStore.ge
       icon: Clock,
       label: '출퇴근',
       value: `${loc.commute_time_max_minutes}분 이내`,
-      valBg: '#EEF3FF',
-      valColor: '#4B7BF5',
+      valBg: 'var(--primary-soft)',
+      valColor: 'var(--primary)',
     })
   }
 
@@ -47,8 +47,8 @@ function buildRows(agentConditions: NonNullable<ReturnType<typeof useAppStore.ge
       icon: Wallet,
       label: '월 고정비',
       value: rentLabel,
-      valBg: '#EEF3FF',
-      valColor: '#4B7BF5',
+      valBg: 'var(--primary-soft)',
+      valColor: 'var(--primary)',
     })
   }
 
@@ -62,8 +62,8 @@ function buildRows(agentConditions: NonNullable<ReturnType<typeof useAppStore.ge
       icon: Ban,
       label: '제외 조건',
       value: excludeItems.join(', '),
-      valBg: '#F1F5F9',
-      valColor: '#64748B',
+      valBg: '#f1f5f9',
+      valColor: 'var(--ink-2)',
     })
   }
 
@@ -74,8 +74,8 @@ function buildRows(agentConditions: NonNullable<ReturnType<typeof useAppStore.ge
       icon: Star,
       label: '편의시설',
       value: facilityItems.join(', '),
-      valBg: '#EEF3FF',
-      valColor: '#4B7BF5',
+      valBg: 'var(--primary-soft)',
+      valColor: 'var(--primary)',
     })
   }
 
@@ -86,15 +86,15 @@ function buildRows(agentConditions: NonNullable<ReturnType<typeof useAppStore.ge
       icon: ShoppingBag,
       label: '기본 옵션',
       value: optionItems.join(', '),
-      valBg: '#F1F5F9',
-      valColor: '#64748B',
+      valBg: '#f1f5f9',
+      valColor: 'var(--ink-2)',
     })
   }
 
   return rows
 }
 
-export default function ConditionSummary({ showEdit = false }: { showEdit?: boolean }) {
+export default function ConditionSummary() {
   const { agentConditions } = useAppStore()
 
   const rows = agentConditions ? buildRows(agentConditions) : []
@@ -104,11 +104,6 @@ export default function ConditionSummary({ showEdit = false }: { showEdit?: bool
       <div className="card cond-summary">
         <div className="card-head">
           <h2>내 조건 요약</h2>
-          {showEdit && (
-            <button className="card-link" type="button">
-              <Pencil size={12} style={{ marginRight: 3 }} /> 편집
-            </button>
-          )}
         </div>
         <p style={{ fontSize: 12, color: 'var(--muted)', padding: '4px 0' }}>
           대화를 통해 조건을 설정해주세요.
@@ -121,15 +116,6 @@ export default function ConditionSummary({ showEdit = false }: { showEdit?: bool
     <div className="card cond-summary">
       <div className="card-head">
         <h2>내 조건 요약</h2>
-        {showEdit ? (
-          <button className="card-link" type="button">
-            <Pencil size={12} style={{ marginRight: 3 }} /> 수정
-          </button>
-        ) : (
-          <span style={{ fontSize: 11, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 3 }}>
-            <Pencil size={11} /> 편집
-          </span>
-        )}
       </div>
       <div className="cond-rows">
         {rows.map(row => {
