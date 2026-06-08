@@ -40,15 +40,15 @@ class ListingCuratorTest(unittest.TestCase):
         conditions = self._make_conditions(max_manwon=200)
         result = curator.recommend(conditions, top_n=10)
         ids = [p["property_id"] for p in result["top_properties"]]
-        self.assertNotIn("P004", ids)
+        self.assertNotIn("P025", ids)
 
     def test_basement_included_when_not_avoided(self) -> None:
         from agent import ListingCurator
         curator = ListingCurator(use_solar=False)
-        conditions = self._make_conditions(avoid_basement=False, max_manwon=40)
+        conditions = self._make_conditions(avoid_basement=False, max_manwon=60)
         result = curator.recommend(conditions, top_n=10)
         ids = [p["property_id"] for p in result["top_properties"]]
-        self.assertIn("P004", ids)
+        self.assertIn("P025", ids)
 
     def test_top_n_respected(self) -> None:
         from agent import ListingCurator

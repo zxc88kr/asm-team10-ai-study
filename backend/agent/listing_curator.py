@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import deepcopy
@@ -895,6 +896,50 @@ def _commute_score(prop: dict[str, Any]) -> int:
     minutes = prop.get("commute_total_minutes", prop["transit"]["walk_min"])
     return max(0, 30 - minutes // 2)
 
+
+def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    radius_km = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlng = math.radians(lng2 - lng1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlng / 2) ** 2
+    c = 2 * math.asin(math.sqrt(a))
+    return radius_km * c
+
+
+def _commute_score_by_distance(km: float, walk_min: int) -> int:
+    """목적지-매물 직선거리 + 도보시간 기반 출퇴근 점수(30점 만점)."""
+    estimated_min = round(km * 4 + walk_min + 5)
+    return max(0, 30 - estimated_min // 2)
+
+
+def _get_destination_coords(
+    conditions: ConditionState,
+    api_key: str | None,
+) -> tuple[float, float] | tuple[None, None]:
+    loc = conditions["hard_conditions"]["location_transport"]
+    destination = ", ".join(loc.get("landmarks", []) + loc.get("areas", []))
+    if not destination:
+        return None, None
+
+    prompt = (
+        "다음 장소의 위도/경도를 JSON으로만 반환하세요."
+        f"\n장소: {destination}"
+        "\n형식: {\"lat\": 37.0000, \"lng\": 127.0000}"
+    )
+    try:
+        content = call_upstage_chat_content(
+            messages=[{"role": "user", "content": prompt}],
+            api_key=api_key,
+            timeout_seconds=15,
+        )
+        match = re.search(r'\{[^{}]*"lat"[^{}]*"lng"[^{}]*\}', content, re.DOTALL)
+        if not match:
+            return None, None
+        data = json.loads(match.group())
+        return float(data["lat"]), float(data["lng"])
+    except Exception:
+        return None, None
+
 _FACILITY_ALIASES: dict[str, list[str]] = {
     "편의점": ["편의점"],
     "마트": ["마트", "슈퍼"],
@@ -1167,7 +1212,7 @@ class ListingCurator:
         self,
         conditions: ConditionState,
         session_id: str = "default",
-        top_n: int = 3,
+        top_n: int = 5,
     ) -> dict[str, Any]:
         passed, _ = _apply_hard_filter(MOCK_PROPERTIES, conditions)
         soft = conditions["soft_conditions"]
@@ -1180,6 +1225,18 @@ class ListingCurator:
         )
         solar_candidates = {p["id"] for p in rule_prescored[:MAX_SOLAR]}
         use_solar = self.use_solar and bool(self.api_key or get_solar_api_key())
+        dest_lat: float | None = None
+        dest_lng: float | None = None
+        if use_solar:
+            dest_lat, dest_lng = _get_destination_coords(conditions, self.api_key)
+
+        def commute_points(prop: dict[str, Any]) -> int:
+            if dest_lat is None or dest_lng is None:
+                return _commute_score(prop)
+            if prop.get("lat") is None or prop.get("lng") is None:
+                return _commute_score(prop)
+            km = _haversine_km(prop["lat"], prop["lng"], dest_lat, dest_lng)
+            return _commute_score_by_distance(km, prop["transit"]["walk_min"])
 
         def score_one(prop: dict[str, Any]) -> dict[str, Any]:
             if use_solar and prop["id"] in solar_candidates:
@@ -1191,7 +1248,7 @@ class ListingCurator:
             else:
                 score, card_matches = _score_rule(prop, soft)
                 agent_mode = "rule"
-            return _build_result(prop, min(100, score + _commute_score(prop)), card_matches, agent_mode)
+            return _build_result(prop, min(100, score + commute_points(prop)), card_matches, agent_mode)
 
         solar_props = [p for p in passed if p["id"] in solar_candidates]
         rule_props = [p for p in passed if p["id"] not in solar_candidates]

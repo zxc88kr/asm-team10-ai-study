@@ -141,7 +141,7 @@ def recommend_node(state: AgentState) -> dict[str, Any]:
 
     try:
         curator = ListingCurator(use_solar=use_solar, api_key=api_key)
-        result = curator.recommend(conditions=conditions, top_n=3)
+        result = curator.recommend(conditions=conditions, top_n=5)
         updated = {**deepcopy(conditions), "top_properties": result["top_properties"]}
     except Exception:
         updated = deepcopy(conditions)

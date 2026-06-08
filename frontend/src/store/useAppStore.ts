@@ -342,7 +342,7 @@ const useAppStore = create<AppState>((set, get) => ({
       const ok = scored
         .filter((s): s is { L: Listing } & Extract<ScoreResult, { excluded: false }> => !s.excluded)
         .sort((a, b) => b.score - a.score)
-      const top = ok.slice(0, 3)
+      const top = ok.slice(0, 5)
       set({ lastTop: top, recommended: top.length > 0, excludedCount: scored.length - ok.length })
       if (top.length > 0 && advanceSteps) {
         set({ currentStep: 2 })
