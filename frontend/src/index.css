@@ -935,73 +935,99 @@ body {
 /* 매물 헤더 카드 */
 .listing-hero {
   display: flex;
-  align-items: center;
-  gap: 14px;
+  flex-direction: column;
+  gap: 20px;
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  padding: 16px;
+  padding: 24px 20px 16px 20px;
   box-shadow: var(--shadow-sm);
 }
+.listing-hero-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
 .listing-hero-thumb {
-  width: 72px;
+  width: 120px;
   height: 72px;
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--primary-soft);
   display: grid;
   place-items: center;
-  font-size: 32px;
+  font-size: 40px;
   flex: none;
   position: relative;
 }
 .top1-crown {
   position: absolute;
-  top: -8px;
+  top: -10px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 14px;
+  font-size: 16px;
 }
-.listing-hero-info {
+.listing-hero-name-row {
   flex: 1;
 }
-.listing-hero-info h2 {
-  font-size: 18px;
-  font-weight: 800;
+.listing-hero-name {
+  font-size: 26px;
+  font-weight: 600;
   margin: 0;
+  letter-spacing: -1px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-gray-800);
+  flex-wrap: wrap;
 }
 .listing-hero-top1 {
   display: inline-block;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 8px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 10px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  padding-left: 10px;
+  padding-right: 10px;
   border-radius: 5px;
   background: var(--primary-soft);
   color: var(--primary);
-  margin-left: 8px;
-  vertical-align: middle;
 }
 .listing-hero-specs {
-  display: flex;
-  gap: 16px;
-  margin-top: 8px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  border-radius: 10px;
+  overflow: hidden;
 }
 .listing-spec {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 8px;
+  border-right: 1px solid var(--line);
+}
+
+.listing-spec:last-child {
+  border-right: none;
 }
 .listing-spec-label {
-  font-size: 10.5px;
+  font-size: 13px;
   color: var(--muted);
   display: flex;
   align-items: center;
   gap: 3px;
 }
 .listing-spec-val {
-  font-size: 15px;
-  font-weight: 800;
+  font-size: 20px;
+  font-weight: 500;
   color: var(--ink);
+}
+.listing-spec:first-child .listing-spec-val {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--primary);
 }
 .listing-score-circle {
   width: 64px;
@@ -1052,7 +1078,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 14px;
+  margin: 5px;
 }
 .section-num {
   width: 24px;
@@ -1236,35 +1262,35 @@ body {
 .basis-list {
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 18px;
+  padding: 5px;
+  padding-top: 16px;
 }
 .basis-item {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: start;
+  gap: 12px;
 }
 .basis-icon {
-  width: 28px;
-  height: 28px;
+  width: 44px;
+  height: 44px;
   border-radius: 8px;
   display: grid;
   place-items: center;
-  font-size: 13px;
+  font-size: 64px;
   flex: none;
 }
 .basis-text {
   flex: 1;
 }
 .basis-cat {
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 500;
   color: var(--ink);
 }
 .basis-detail {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--ink-2);
-  margin-top: 2px;
-  line-height: 1.6;
 }
 
 /* 장단점 */
@@ -1318,18 +1344,18 @@ body {
 .ai-comment {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 14px;
   padding: 13px 16px;
   background: var(--primary-soft);
   border: 1px solid #c7d9ff;
   border-radius: var(--radius);
-  font-size: 13px;
+  font-size: 15px;
   color: var(--primary);
   font-weight: 500;
   line-height: 1.5;
 }
 .ai-comment-icon {
-  font-size: 20px;
+  font-size: 24px;
   flex: none;
 }
 
@@ -1349,7 +1375,7 @@ body {
   border-radius: 10px;
   background: var(--card);
   color: var(--primary);
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   cursor: pointer;
   font-family: inherit;
@@ -1366,8 +1392,8 @@ body {
   border-radius: 10px;
   background: var(--primary);
   color: #fff;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 500;
   cursor: pointer;
   font-family: inherit;
 }
