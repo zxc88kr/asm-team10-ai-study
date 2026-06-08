@@ -33,7 +33,7 @@ export default function KakaoMap({ lat, lng, title, height = 200 }: KakaoMapProp
     setMapError(null)
 
     const mapLat = lat ?? 37.5665
-    const mapLng = lng ?? 126.9780
+    const mapLng = lng ?? 126.978
 
     const initMap = () => {
       if (!containerRef.current) return
@@ -43,7 +43,7 @@ export default function KakaoMap({ lat, lng, title, height = 200 }: KakaoMapProp
         if (lat && lng) {
           const marker = new window.kakao.maps.Marker({ position: center, map })
           const info = new window.kakao.maps.InfoWindow({
-            content: `<div style="padding:4px 8px;font-size:12px;white-space:nowrap;">${title}</div>`,
+            content: `<div style="padding:4px 24px 4px 8px;font-size:12px;max-width:180px;word-break:keep-all;">${title}</div>`,
             removable: true,
           })
           info.open(map, marker)

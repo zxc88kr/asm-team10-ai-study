@@ -23,7 +23,7 @@ export function postReset(sessionId: string): Promise<AgentConditions> {
 export function postRecommend(
   conditions: AgentConditions,
   sessionId: string,
-  topN = 3,
+  topN = 5,
 ): Promise<AgentRecommendResponse> {
   return request<AgentRecommendResponse>('/agent/recommend', {
     conditions,

@@ -21,7 +21,7 @@ export default function RecommendationList({ onSelectListing, selectedId }: Prop
     return (
       <div className="card">
         <div className="card-head">
-          <h2>추천 매물 TOP 3</h2>
+          <h2>추천 매물 TOP 5</h2>
           <span style={{ fontSize: 11, color: 'var(--muted)' }}>전체 보기</span>
         </div>
         <p style={{ fontSize: 12, color: 'var(--muted)', padding: '4px 0', lineHeight: 1.6 }}>
@@ -34,7 +34,7 @@ export default function RecommendationList({ onSelectListing, selectedId }: Prop
   return (
     <div className="card">
       <div className="card-head">
-        <h2>추천 매물 TOP 3</h2>
+        <h2>추천 매물 TOP 5</h2>
         <button className="card-link" type="button">
           전체 보기
         </button>

@@ -144,26 +144,26 @@ body {
   list-style: none;
   margin: 0;
   padding: 0;
-  padding-left: 32px;
-  padding-top: 12px;
+  padding-top: 8px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 0;
 }
 .step {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 6px 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
   position: relative;
 }
 .step:not(:last-child)::after {
   content: '';
   position: absolute;
-  left: 12px;
-  top: 33px;
-  width: 2px;
-  bottom: -6px;
+  top: 13px;
+  left: calc(50% + 14px);
+  right: calc(-50% + 14px);
+  height: 2px;
   background: var(--line);
 }
 .step-dot {
@@ -182,17 +182,19 @@ body {
 .step-text {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 1px;
-  padding-top: 3px;
 }
 .step-label {
-  font-size: 13.5px;
-  color: var(--muted);
-  font-weight: 500;
-}
-.step-status {
   font-size: 12px;
   color: var(--muted);
+  font-weight: 500;
+  text-align: center;
+}
+.step-status {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
 }
 
 .step.done .step-dot {
@@ -518,11 +520,10 @@ body {
   margin-bottom: 10px;
 }
 .chip {
-  background: var(--primary-soft);
-  color: var(--primary);
-  border: 1px solid #c7d9ff;
+  background: var(--primary);
+  color: var(--color-white);
   border-radius: 20px;
-  padding: 7px 14px;
+  padding: 8px 15px;
   font-size: 12.5px;
   cursor: pointer;
   font-family: inherit;
@@ -530,7 +531,13 @@ body {
   transition: background 0.15s;
 }
 .chip:hover {
-  background: #dbe8ff;
+  background: var(--primary-dark);
+}
+.chip-action {
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 @keyframes pop {
   from {
@@ -571,8 +578,8 @@ body {
   height: 40px;
   border-radius: 50%;
   border: none;
-  background: var(--primary);
-  color: #fff;
+  background: var(--primary-mid);
+  color: var(--primary);
   font-size: 16px;
   cursor: pointer;
   flex: none;
@@ -581,7 +588,7 @@ body {
   transition: background 0.15s;
 }
 .send:hover {
-  background: var(--primary-dark);
+  opacity: 80%;
 }
 
 /* ── 우측 패널 ── */

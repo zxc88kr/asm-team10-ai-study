@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { GREETING } from '../data/scenario'
 import { CONDITION_CARDS } from '../data/conditions'
 import { LISTINGS } from '../data/listings'
-import { postMessage, postRecommend } from '../services/agentApi'
+import { postMessage, postRecommend, postReset } from '../services/agentApi'
 import type {
   Listing,
   HardConstraints,
@@ -201,6 +201,7 @@ interface AppState {
   messages: Message[]
   currentStep: number
   isTyping: boolean
+  isSearching: boolean
   activeView: ActiveView
   selectedListingId: string | null
   toastMessage: string | null
@@ -228,6 +229,7 @@ const useAppStore = create<AppState>((set, get) => ({
   messages: [{ role: 'ai', text: GREETING }],
   currentStep: 1,
   isTyping: false,
+  isSearching: false,
   activeView: 'chat',
   selectedListingId: null,
   toastMessage: null,
@@ -354,6 +356,7 @@ const useAppStore = create<AppState>((set, get) => ({
     }
 
     set(s => ({
+      isSearching: true,
       messages: [
         ...s.messages,
         { role: 'ai' as const, text: '조건에 맞는 매물을 검색하고 있어요...', searching: true },
@@ -364,6 +367,7 @@ const useAppStore = create<AppState>((set, get) => ({
       const top = response.top_properties.map(agentToScoredListing)
       if (top.length === 0) {
         set(s => ({
+          isSearching: false,
           messages: [
             ...s.messages.filter(m => !m.searching),
             { role: 'ai' as const, text: '입력하신 조건에 맞는 매물이 없어요. 예산이나 출퇴근 조건을 조정해볼까요?' },
@@ -372,6 +376,7 @@ const useAppStore = create<AppState>((set, get) => ({
         return
       }
       set(s => ({
+        isSearching: false,
         messages: [
           ...s.messages.filter(m => !m.searching),
           { role: 'ai' as const, text: `맞춤 매물 TOP ${top.length}을 찾았어요. 우측에서 확인해보세요!` },
@@ -386,7 +391,7 @@ const useAppStore = create<AppState>((set, get) => ({
         setTimeout(() => set({ currentStep: 3 }), 500)
       }
     }).catch(() => {
-      set(s => ({ messages: s.messages.filter(m => !m.searching) }))
+      set(s => ({ isSearching: false, messages: s.messages.filter(m => !m.searching) }))
       runLocal()
     })
   },
@@ -397,6 +402,7 @@ const useAppStore = create<AppState>((set, get) => ({
   },
 
   reset() {
+    void postReset(get().sessionId).catch(() => {})
     set({
       turn: 0,
       hard: {},
@@ -407,6 +413,7 @@ const useAppStore = create<AppState>((set, get) => ({
       messages: [{ role: 'ai', text: GREETING }],
       currentStep: 1,
       isTyping: false,
+      isSearching: false,
       activeView: 'chat',
       selectedListingId: null,
       toastMessage: null,
