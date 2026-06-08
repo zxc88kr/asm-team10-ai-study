@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from copy import deepcopy
 from typing import Any
 
@@ -1170,21 +1171,37 @@ class ListingCurator:
     ) -> dict[str, Any]:
         passed, _ = _apply_hard_filter(MOCK_PROPERTIES, conditions)
         soft = conditions["soft_conditions"]
-        scored: list[dict[str, Any]] = []
 
-        for prop in passed:
-            if self.use_solar and (self.api_key or get_solar_api_key()):
+        MAX_SOLAR = top_n * 3
+        rule_prescored = sorted(
+            passed,
+            key=lambda p: _score_rule(p, soft)[0] + _commute_score(p),
+            reverse=True,
+        )
+        solar_candidates = {p["id"] for p in rule_prescored[:MAX_SOLAR]}
+        use_solar = self.use_solar and bool(self.api_key or get_solar_api_key())
+
+        def score_one(prop: dict[str, Any]) -> dict[str, Any]:
+            if use_solar and prop["id"] in solar_candidates:
                 try:
                     score, card_matches, agent_mode = _score_solar(prop, conditions, self.api_key)
-                except SolarClientError:
+                except Exception:
                     score, card_matches = _score_rule(prop, soft)
                     agent_mode = "rule_fallback"
             else:
                 score, card_matches = _score_rule(prop, soft)
                 agent_mode = "rule"
+            return _build_result(prop, min(100, score + _commute_score(prop)), card_matches, agent_mode)
 
-            total = min(100, score + _commute_score(prop))
-            scored.append(_build_result(prop, total, card_matches, agent_mode))
+        solar_props = [p for p in passed if p["id"] in solar_candidates]
+        rule_props = [p for p in passed if p["id"] not in solar_candidates]
 
+        rule_results = [score_one(p) for p in rule_props]
+
+        with ThreadPoolExecutor(max_workers=MAX_SOLAR) as pool:
+            futures = {pool.submit(score_one, p): p for p in solar_props}
+            solar_results = [f.result() for f in as_completed(futures)]
+
+        scored = solar_results + rule_results
         top = sorted(scored, key=lambda x: x["score"], reverse=True)[:top_n]
         return {"session_id": session_id, "top_properties": top}

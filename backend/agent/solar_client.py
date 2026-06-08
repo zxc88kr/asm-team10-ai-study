@@ -207,7 +207,17 @@ def call_upstage_chat_json(
 
     return _parse_json_object(content)
 
-def call_upstage_chat_content(*, messages, api_key, model, timeout_seconds=20):
+def call_upstage_chat_content(
+    *,
+    messages: list[dict[str, str]],
+    api_key: str | None = None,
+    model: str = DEFAULT_UPSTAGE_CHAT_MODEL,
+    timeout_seconds: int = 20,
+) -> str:
+    key = api_key or get_solar_api_key()
+    if not key:
+        raise SolarClientError("Upstage API key is missing. Set UPSTAGE_API_KEY or SOLAR_API_KEY.")
+
     req = urllib.request.Request(
         UPSTAGE_CHAT_COMPLETIONS_URL,
         data=json.dumps({
@@ -216,13 +226,20 @@ def call_upstage_chat_content(*, messages, api_key, model, timeout_seconds=20):
             "temperature": 0.1,
             "max_tokens": 1200,
         }).encode(),
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
         method="POST",
     )
 
-    return json.loads(
-        urllib.request.urlopen(req, timeout=timeout_seconds).read()
-    )["choices"][0]["message"]["content"]
+    try:
+        with urllib.request.urlopen(req, timeout=timeout_seconds) as response:
+            raw = response.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        raise SolarClientError(f"Upstage chat request failed: HTTP {exc.code} {detail}") from exc
+    except urllib.error.URLError as exc:
+        raise SolarClientError(f"Upstage chat request failed: {exc}") from exc
+
+    return json.loads(raw)["choices"][0]["message"]["content"]
 
 def call_upstage_json(
     *,
