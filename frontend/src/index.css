@@ -648,6 +648,46 @@ body {
   white-space: nowrap;
 }
 
+/* AI 처리 로그 */
+.agent-log-card {
+  padding-bottom: 12px;
+}
+.agent-log-badge {
+  font-size: 10px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border: 1px solid #c7d9ff;
+  border-radius: 999px;
+  padding: 2px 7px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.agent-log-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.agent-log-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.agent-log-dot {
+  width: 7px;
+  height: 7px;
+  margin-top: 5px;
+  border-radius: 999px;
+  background: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+  flex: none;
+}
+
 /* 우선순위 태그 */
 .priority-row {
   display: flex;
