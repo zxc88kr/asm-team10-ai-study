@@ -446,7 +446,13 @@ const useAppStore = create<AppState>((set, get) => ({
   },
 
   openAnalysis(listingId: string) {
-    set({ activeView: 'analysis', selectedListingId: listingId })
+    const listing = (get().lastTop ?? []).find(sl => sl.L.id === listingId)?.L
+    const label = listing ? listing.name : listingId
+    set({
+      activeView: 'analysis',
+      selectedListingId: listingId,
+      agentLogs: [`매물 선택: ${label}`, '상세 분석 데이터 로드', '입지/안전/편의 분석 표시'],
+    })
   },
 
   closeAnalysis() {
