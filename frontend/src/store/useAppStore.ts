@@ -209,6 +209,7 @@ interface AppState {
   conditionsComplete: boolean
   agentConditions: AgentConditions | null
   agentListings: Listing[]
+  agentLogs: string[]
   advance: (displayText?: string) => void
   sendMessage: (text: string) => void
   runRecommendation: (advanceSteps: boolean) => void
@@ -237,14 +238,20 @@ const useAppStore = create<AppState>((set, get) => ({
   conditionsComplete: false,
   agentConditions: null,
   agentListings: [],
+  agentLogs: ['대기 중: 유저 메시지를 기다리는 중'],
 
   advance(displayText?: string) {
     const msg = (displayText ?? '').trim()
     if (!msg) return
 
-    set(s => ({ messages: [...s.messages, { role: 'user', text: msg }], isTyping: true }))
+    set(s => ({
+      messages: [...s.messages, { role: 'user', text: msg }],
+      isTyping: true,
+      agentLogs: ['유저 메시지 수신', '조건 추출 API 요청 중'],
+    }))
 
     void postMessage(msg, get().sessionId).then(result => {
+      const logs = result.agent_logs ?? ['조건 추출 응답 수신', '조건 JSON 업데이트 완료']
       const { monthly_rent, location_transport } = result.hard_conditions
       const { basement } = result.soft_conditions
 
@@ -273,6 +280,7 @@ const useAppStore = create<AppState>((set, get) => ({
               cards: [...s.cards, ...addCards],
               isTyping: false,
               agentConditions: result,
+              agentLogs: logs,
               messages: [...s.messages, { role: 'ai' as const, text: '현재 조건에 맞는 매물이 우측에 표시돼 있어요. 조건을 더 추가하거나 변경해보세요!' }],
             }))
           } else {
@@ -284,6 +292,7 @@ const useAppStore = create<AppState>((set, get) => ({
               cards: [...s.cards, ...addCards],
               isTyping: false,
               agentConditions: result,
+              agentLogs: logs,
               conditionsComplete: true,
               lastTop: top,
               agentListings: top.map(sl => sl.L),
@@ -304,6 +313,7 @@ const useAppStore = create<AppState>((set, get) => ({
             cards: [...s.cards, ...addCards],
             isTyping: false,
             agentConditions: result,
+            agentLogs: logs,
             conditionsComplete: false,
             messages: [...s.messages, { role: 'ai' as const, text: '입력하신 조건에 맞는 매물이 없어요. 예산이나 출퇴근 조건을 조정해볼까요?' }],
           }))
@@ -316,12 +326,14 @@ const useAppStore = create<AppState>((set, get) => ({
         cards: [...s.cards, ...addCards],
         isTyping: false,
         agentConditions: result,
+        agentLogs: logs,
         conditionsComplete: result.missing_required_conditions.length === 0,
         messages: [...s.messages, { role: 'ai', text: result.next_question }],
       }))
     }).catch(() => {
       set(s => ({
         isTyping: false,
+        agentLogs: ['조건 추출 API 요청 실패', '백엔드 연결 확인 필요'],
         messages: [...s.messages, {
           role: 'ai' as const,
           text: '서버에 연결할 수 없어요. 백엔드가 실행 중인지 확인해주세요.',
@@ -357,6 +369,7 @@ const useAppStore = create<AppState>((set, get) => ({
 
     set(s => ({
       isSearching: true,
+      agentLogs: ['추천 요청 수신', '매물 후보 점수 계산 중'],
       messages: [
         ...s.messages,
         { role: 'ai' as const, text: '조건에 맞는 매물을 검색하고 있어요...', searching: true },
@@ -365,9 +378,11 @@ const useAppStore = create<AppState>((set, get) => ({
 
     void postRecommend(agentConditions, sessionId).then(response => {
       const top = response.top_properties.map(agentToScoredListing)
+      const logs = response.agent_logs ?? [`추천 매물 ${top.length}개 반환`]
       if (top.length === 0) {
         set(s => ({
           isSearching: false,
+          agentLogs: logs,
           messages: [
             ...s.messages.filter(m => !m.searching),
             { role: 'ai' as const, text: '입력하신 조건에 맞는 매물이 없어요. 예산이나 출퇴근 조건을 조정해볼까요?' },
@@ -377,6 +392,7 @@ const useAppStore = create<AppState>((set, get) => ({
       }
       set(s => ({
         isSearching: false,
+        agentLogs: logs,
         messages: [
           ...s.messages.filter(m => !m.searching),
           { role: 'ai' as const, text: `맞춤 매물 TOP ${top.length}을 찾았어요. 우측에서 확인해보세요!` },
@@ -391,7 +407,11 @@ const useAppStore = create<AppState>((set, get) => ({
         setTimeout(() => set({ currentStep: 3 }), 500)
       }
     }).catch(() => {
-      set(s => ({ isSearching: false, messages: s.messages.filter(m => !m.searching) }))
+      set(s => ({
+        isSearching: false,
+        agentLogs: ['추천 API 요청 실패', '로컬 추천으로 대체'],
+        messages: s.messages.filter(m => !m.searching),
+      }))
       runLocal()
     })
   },
@@ -421,6 +441,7 @@ const useAppStore = create<AppState>((set, get) => ({
       conditionsComplete: false,
       agentConditions: null,
       agentListings: [],
+      agentLogs: ['대기 중: 유저 메시지를 기다리는 중'],
     })
   },
 
